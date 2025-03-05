@@ -7,6 +7,8 @@ A Model Context Protocol (MCP) server for debugging Chrome and managing userscri
 - Launch Chrome in debug mode
 - Get console logs from Chrome
 - Evaluate JavaScript in Chrome's context
+- DOM access and manipulation
+- Web scraping capabilities
 - Support for userscript injection
 - Chrome extension management
 
@@ -82,11 +84,51 @@ Get console logs from Chrome:
 ```
 
 ### evaluate
-Evaluate JavaScript in Chrome:
+Evaluate JavaScript in Chrome's context and manipulate the DOM:
 ```typescript
 {
   expression: string; // JavaScript code to evaluate
 }
+```
+
+## Example Usage
+
+### DOM Manipulation
+```typescript
+// Navigate to a website
+await use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "launch_chrome",
+  arguments: { url: "https://example.com" }
+});
+
+// Read page title
+await use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "evaluate",
+  arguments: { expression: "document.title" }
+});
+
+// Extract all links from the page
+await use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "evaluate",
+  arguments: {
+    expression: `Array.from(document.querySelectorAll('a')).map(a => ({
+      text: a.textContent.trim(),
+      href: a.href
+    }))`
+  }
+});
+
+// Modify page content
+await use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "evaluate",
+  arguments: {
+    expression: `document.body.innerHTML += '<div id="custom">New content</div>'`
+  }
+});
 ```
 
 ## Testing
