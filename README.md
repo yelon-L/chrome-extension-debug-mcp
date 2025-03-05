@@ -10,15 +10,47 @@ A Model Context Protocol (MCP) server for debugging Chrome and managing userscri
 - Support for userscript injection
 - Chrome extension management
 
+## Requirements
+
+- Node.js 16.x or higher
+- Chrome/Chromium browser
+- Windows, macOS, or Linux operating system
+
+## Dependencies
+
+This project uses the following open-source packages:
+- [@modelcontextprotocol/sdk](https://github.com/ModelContext/protocol) - MCP SDK for server implementation
+- [chrome-remote-interface](https://github.com/cyrus-and/chrome-remote-interface) - Chrome DevTools Protocol implementation
+- [puppeteer-core](https://github.com/puppeteer/puppeteer) - Chrome automation and debugging capabilities
+- [TypeScript](https://www.typescriptlang.org/) - For type-safe JavaScript development
+
 ## Installation
 
-```bash
-npm install
+### RooCode Installation
+
+1. Open RooCode settings
+2. Add the following to your MCP server configuration:
+
+```json
+{
+  "mcpServers": {
+    "chrome-debug": {
+      "command": "node",
+      "args": ["path/to/chrome-debug-mcp/build/index.js"],
+      "env": {}
+    }
+  }
+}
 ```
 
-## Usage
+Replace `path/to/chrome-debug-mcp` with the actual path to this repository on your system.
+
+### Manual Installation
 
 ```bash
+# Install dependencies
+npm install
+
 # Build the project
 npm run build
 
@@ -30,27 +62,43 @@ node build/index.js
 
 ### launch_chrome
 Launch Chrome in debug mode with optional parameters:
-- url: URL to navigate to
-- executablePath: Path to Chrome executable
-- loadExtension: Path to unpacked extension directory
-- disableExtensionsExcept: Path to extension that should remain enabled
-- disableAutomationControlled: Disable Chrome's "Automation Controlled" mode
-- userscriptPath: Path to userscript file to inject
+```typescript
+{
+  url?: string;                    // URL to navigate to
+  executablePath?: string;         // Path to Chrome executable
+  loadExtension?: string;          // Path to unpacked extension directory
+  disableExtensionsExcept?: string; // Path to extension that should remain enabled
+  disableAutomationControlled?: boolean; // Disable Chrome's "Automation Controlled" mode
+  userscriptPath?: string;         // Path to userscript file to inject
+}
+```
 
 ### get_console_logs
 Get console logs from Chrome:
-- clear: Whether to clear logs after retrieving (optional)
+```typescript
+{
+  clear?: boolean; // Whether to clear logs after retrieving
+}
+```
 
 ### evaluate
 Evaluate JavaScript in Chrome:
-- expression: JavaScript code to evaluate
+```typescript
+{
+  expression: string; // JavaScript code to evaluate
+}
+```
 
 ## Testing
 
-The server includes tests to verify functionality:
+The server includes comprehensive tests:
 ```bash
 npm test
 ```
+
+## Security
+
+This server runs with the same permissions as Chrome's debugging protocol. Use caution when evaluating untrusted JavaScript or loading untrusted extensions.
 
 ## Contributing
 
@@ -63,3 +111,10 @@ npm test
 ## License
 
 MIT
+
+## Acknowledgments
+
+- [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
+- [Model Context Protocol](https://github.com/ModelContext/protocol)
+- [Chrome Remote Interface](https://github.com/cyrus-and/chrome-remote-interface)
+- [Puppeteer](https://pptr.dev/)
