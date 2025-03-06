@@ -58,6 +58,8 @@ interface LaunchChromeArgs {
   url?: string;
   /** Path to a specific Chrome executable (uses bundled Chrome if not provided) */
   executablePath?: string;
+  /** Path to a specific user data directory (optional, uses default Chrome profile if not provided) */
+  userDataDir?: string;
   /** Path to an unpacked Chrome extension to load */
   loadExtension?: string;
   /** Path to extension that should remain enabled while others are disabled */
@@ -134,6 +136,10 @@ class ChromeDebugServer {
               executablePath: {
                 type: 'string',
                 description: 'Path to Chrome executable (optional, uses bundled Chrome if not provided)',
+              },
+              userDataDir: {
+                type: 'string',
+                description: 'Path to a specific user data directory (optional, uses default Chrome profile if not provided)',
               },
               loadExtension: {
                 type: 'string',
@@ -223,12 +229,21 @@ class ChromeDebugServer {
       // Configure Chrome launch options
       const launchOptions: puppeteer.PuppeteerLaunchOptions = {
         headless: false,
+        ignoreDefaultArgs: ['--disable-extensions'],  // Prevent Puppeteer from disabling extensions
         args: [
           '--remote-debugging-port=9222',  // Enable CDP
           '--disable-web-security',        // Allow cross-origin requests
           '--no-sandbox'                   // Required for some environments
         ]
       } as puppeteer.PuppeteerLaunchOptions;
+
+      // Configure user data directory if specified
+      if (args?.userDataDir) {
+        log('Using custom user data directory:', args.userDataDir);
+        launchOptions.userDataDir = args.userDataDir;
+      } else {
+        log('Using default Chrome profile');
+      }
 
       // Configure extension loading if requested
       if (args?.loadExtension) {
@@ -379,6 +394,10 @@ class ChromeDebugServer {
       statusMessage += args?.executablePath
         ? `\nUsing custom executable: ${args.executablePath}`
         : '\nUsing bundled Chrome';
+        
+      statusMessage += args?.userDataDir
+        ? `\nUsing custom user data directory: ${args.userDataDir}`
+        : '\nUsing default Chrome profile';
       
       if (args?.loadExtension) {
         statusMessage += `\nLoaded extension: ${args.loadExtension}`;

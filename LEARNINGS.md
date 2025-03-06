@@ -122,9 +122,20 @@ This document captures key learnings from implementing a Chrome debug MCP server
    - Implement extension debugging features
 
 4. **Extension Support Enhancements**
-   - Add support for extension manifest v3
-   - Implement extension permission management
-   - Add extension state persistence between sessions
+    - Add support for extension manifest v3
+    - Implement extension permission management
+    - Add extension state persistence between sessions
+
+5. **Chrome Profile Management**
+    - Successfully implemented custom user data directory support
+    - Profile settings and extensions persist between sessions
+    - Extensions maintain their state and configurations
+    - Default profile loads automatically if no custom profile specified
+    - Cannot directly access extension internal data through CDP
+    - Extension APIs (like chrome.management) are restricted due to security
+    - Extensions must be interacted with through their UI or public APIs
+    - Proper handling of profile paths and permissions required
+    - Prevent Puppeteer from disabling extensions using ignoreDefaultArgs
 
 ## Conclusion
 The Chrome debug MCP server implementation provided valuable insights into browser automation, script injection, and debugging. The solutions developed here can serve as a foundation for future browser automation and userscript management projects.
