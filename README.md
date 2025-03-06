@@ -1,23 +1,52 @@
 # Chrome Debug MCP Server
 
-A Model Context Protocol (MCP) server for controlling Chrome through Chrome DevTools Protocol (CDP) and Puppeteer. This server provides AI assistants with the ability to:
+A Model Context Protocol (MCP) server for controlling Chrome with debugging capabilities, userscript injection, and extension support.
 
-- Launch Chrome with various configurations
-- Inject userscripts with GM_ function support
-- Load Chrome extensions
-- Capture console logs
-- Evaluate JavaScript in the browser context
+## Features
 
-## Requirements
+### Chrome Control
+- Launch Chrome with custom configurations
+- Support for custom Chrome executable paths
+- User profile management (default or custom user data directory)
+- Extension support and management
+- Disable Chrome's "Automation Controlled" banner
 
-- Node.js v18 or higher
-- Chrome browser installed
-- npm v8 or higher
+### Debugging Capabilities
+- Remote debugging via Chrome DevTools Protocol (CDP)
+- Console log capture and monitoring
+- JavaScript evaluation in page context
+- Real-time console output streaming
 
-## Installation Options
+### Userscript Support
+- Inject userscripts into web pages
+- Greasemonkey-style API support:
+  - `GM_setValue`/`GM_getValue` for persistent storage
+  - `GM_addStyle` for CSS injection
+  - `GM_xmlhttpRequest` for cross-origin requests
+  - `GM_openInTab` for new tab creation
+  - `GM_registerMenuCommand` for menu commands
 
-### Option 1: Roo Code / Cline VSCode Extension
+### Extension Integration
+- Load unpacked extensions
+- Maintain extension states and configurations
+- Support for default Chrome profile extensions
+- Selective extension enabling/disabling
 
+## Installation
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v14 or higher)
+- [Chrome](https://www.google.com/chrome/) browser installed
+- [Visual Studio Code](https://code.visualstudio.com/)
+- [Roo Code Extension](https://marketplace.visualstudio.com/items?itemName=RooVeterinaryInc.roo-cline)
+
+### Installing Roo Code Extension
+1. Open Visual Studio Code
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "Roo Code"
+4. Click Install
+
+### Setting up Chrome Debug MCP Server
 1. Clone this repository:
    ```bash
    git clone https://github.com/yourusername/chrome-debug-mcp.git
@@ -29,121 +58,105 @@ A Model Context Protocol (MCP) server for controlling Chrome through Chrome DevT
    npm install
    ```
 
-3. Build the server:
+3. Build the project:
    ```bash
    npm run build
    ```
 
-4. Add the server to Cline's MCP settings:
-   - Open VS Code
-   - Open the settings file at:
-     ```
-     Windows: %APPDATA%\Code\User\globalStorage\rooveterinaryinc.roo-cline\settings\cline_mcp_settings.json
-     Mac: ~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
-     Linux: ~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
-     ```
-   - Add the following configuration:
-     ```json
-     {
-       "mcpServers": {
-         "chrome-debug": {
-           "command": "node",
-           "args": ["PATH_TO_REPO/chrome-debug-mcp/build/index.js"],
-           "disabled": false,
-           "alwaysAllow": []
-         }
+4. Configure in Roo Code:
+   Add to `cline_mcp_settings.json`:
+   ```json
+   {
+     "mcpServers": {
+       "chrome-debug": {
+         "command": "node",
+         "args": ["path/to/chrome-debug-mcp/build/index.js"],
+         "disabled": false,
+         "alwaysAllow": []
        }
      }
-     ```
-   - Replace PATH_TO_REPO with the actual path to your cloned repository
+   }
+   ```
 
-### Option 2: Claude Desktop App
+## Usage
 
-1. Follow steps 1-3 from Option 1 above
-
-2. Add the server to Claude Desktop's settings:
-   - Open Claude Desktop
-   - Open the settings file at:
-     ```
-     Windows: %APPDATA%\Claude\claude_desktop_config.json
-     Mac: ~/Library/Application Support/Claude/claude_desktop_config.json
-     Linux: ~/.config/Claude/claude_desktop_config.json
-     ```
-   - Add the same configuration as shown in Option 1, adjusting the path accordingly
-
-## Available Tools
-
-### launch_chrome
-Launch Chrome with specific configurations:
-- url: Navigate to a specific URL
-- executablePath: Use custom Chrome executable
-- loadExtension: Load unpacked extension
-- disableExtensionsExcept: Disable all extensions except specified one
-- disableAutomationControlled: Hide automation controlled banner
-- userscriptPath: Inject userscript into the page
-
-### get_console_logs
-Retrieve console output:
-- clear: Whether to clear logs after retrieving
-
-### evaluate
-Execute JavaScript in the browser context:
-- expression: JavaScript code to evaluate
-
-## Example Usage
-
+### Basic Chrome Launch
 ```javascript
-// Launch Chrome and navigate to a page
-await use_mcp_tool("chrome-debug", "launch_chrome", {
-  url: "https://example.com"
-});
-
-// Evaluate JavaScript
-await use_mcp_tool("chrome-debug", "evaluate", {
-  expression: "document.title"
-});
-
-// Get console logs
-await use_mcp_tool("chrome-debug", "get_console_logs", {
-  clear: true
-});
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "launch_chrome",
+  arguments: {
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    url: "https://example.com"
+  }
+})
 ```
 
-## Features
+### Launch with Custom Profile
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "launch_chrome",
+  arguments: {
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    userDataDir: "path/to/chrome/profile",
+    disableAutomationControlled: true
+  }
+})
+```
 
-- Full Chrome DevTools Protocol support
-- Automated browser control
-- Greasemonkey-style userscript injection
-- Console log capture
-- Extension loading support
-- Cross-origin request support
-- Graceful cleanup on shutdown
+### Inject Userscript
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "launch_chrome",
+  arguments: {
+    url: "https://example.com",
+    userscriptPath: "path/to/userscript.js"
+  }
+})
+```
 
-## Development
+### Evaluate JavaScript
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "evaluate",
+  arguments: {
+    expression: "document.title"
+  }
+})
+```
 
-To modify the server:
+### Get Console Logs
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "get_console_logs",
+  arguments: {
+    clear: true
+  }
+})
+```
 
-1. Make changes in the `src` directory
-2. Run `npm run build` to compile
-3. Restart the MCP server
+## Dependencies
 
-## Troubleshooting
+This project uses the following open-source packages:
 
-1. If Chrome fails to launch:
-   - Ensure Chrome is installed
-   - Try providing explicit path to Chrome executable
-   - Check system permissions
-
-2. If connection fails:
-   - Verify the path in MCP settings is correct
-   - Ensure Node.js is installed and in PATH
-   - Check if port 9222 is available
-
-3. If extensions don't load:
-   - Verify extension path is absolute
-   - Ensure extension is unpacked
-   - Check extension manifest version
+- [Puppeteer](https://pptr.dev/) - Chrome automation library
+- [chrome-remote-interface](https://github.com/cyrus-and/chrome-remote-interface) - Chrome DevTools Protocol client
+- [@modelcontextprotocol/sdk](https://github.com/ModelContextProtocol/sdk) - MCP SDK for server implementation
 
 ## License
 
-ISC License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contributing
+
+See our [Contributing Guide](CONTRIBUTING.md) for details on making contributions.
+
+## Acknowledgments
+
+- [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
+- [Greasemonkey API](https://wiki.greasespot.net/Greasemonkey_Manual:API)
+- [Model Context Protocol](https://modelcontextprotocol.ai)
