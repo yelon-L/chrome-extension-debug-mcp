@@ -1,0 +1,24 @@
+# System Requirements
+Node.js >= 18.0.0
+npm >= 8.0.0
+Chrome Browser (any recent version)
+
+# Node.js Dependencies
+@modelcontextprotocol/sdk@^1.6.1
+chrome-remote-interface@^0.33.0
+puppeteer@^22.8.2
+
+# Development Dependencies
+@types/node@^20.0.0
+@types/chrome-remote-interface@latest
+typescript@^5.0.0
+
+# Optional
+Chrome Extensions (if using extension loading feature)
+Userscripts (if using userscript injection feature)
+
+# System Requirements Notes
+- Port 9222 must be available for Chrome DevTools Protocol
+- Sufficient permissions to launch Chrome
+- Write access to the installation directory
+- Internet connection for initial npm install

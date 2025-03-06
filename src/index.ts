@@ -20,10 +20,19 @@ import {
   ListToolsRequestSchema,
   ErrorCode,
   McpError,
+  Request
 } from '@modelcontextprotocol/sdk/types.js';
 import CDP from 'chrome-remote-interface';
 import type { Client } from 'chrome-remote-interface';
 import * as puppeteer from 'puppeteer';
+
+interface ConsoleAPICalledEvent {
+  type: string;
+  args: Array<{
+    value?: any;
+    description?: string;
+  }>;
+}
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -212,24 +221,24 @@ class ChromeDebugServer {
       }
 
       // Configure Chrome launch options
-      const launchOptions: puppeteer.LaunchOptions = {
+      const launchOptions: puppeteer.PuppeteerLaunchOptions = {
         headless: false,
         args: [
           '--remote-debugging-port=9222',  // Enable CDP
           '--disable-web-security',        // Allow cross-origin requests
           '--no-sandbox'                   // Required for some environments
         ]
-      };
+      } as puppeteer.PuppeteerLaunchOptions;
 
       // Configure extension loading if requested
       if (args?.loadExtension) {
         log('Loading extension from:', args.loadExtension);
-        launchOptions.args!.push(`--load-extension=${args.loadExtension}`);
+        launchOptions.args?.push(`--load-extension=${args.loadExtension}`);
       }
 
       if (args?.disableExtensionsExcept) {
         log('Disabling extensions except:', args.disableExtensionsExcept);
-        launchOptions.args!.push(`--disable-extensions-except=${args.disableExtensionsExcept}`);
+        launchOptions.args?.push(`--disable-extensions-except=${args.disableExtensionsExcept}`);
       }
 
       // Use specific Chrome executable if provided
@@ -265,9 +274,9 @@ class ChromeDebugServer {
       await this.cdpClient.Runtime.enable();
       
       // Set up console message capture
-      this.cdpClient.Runtime.consoleAPICalled((params) => {
+      this.cdpClient.Runtime.consoleAPICalled((params: ConsoleAPICalledEvent) => {
         const { type, args } = params;
-        const text = args.map(arg => arg.value || arg.description).join(' ');
+        const text = args.map((arg: { value?: any; description?: string }) => arg.value || arg.description).join(' ');
         this.consoleLogs.push(`[${type}] ${text}`);
         log('Console message:', type, text);
       });
