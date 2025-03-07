@@ -80,6 +80,8 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 
 ## Usage
 
+For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
+
 ### Basic Chrome Launch
 ```javascript
 use_mcp_tool({
