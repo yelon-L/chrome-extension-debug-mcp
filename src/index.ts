@@ -25,6 +25,41 @@ import {
 import CDP from 'chrome-remote-interface';
 import type { Client } from 'chrome-remote-interface';
 import * as puppeteer from 'puppeteer';
+import { toolDefinitions } from './tool-definitions.js';
+import {
+  ClickArgs,
+  TypeArgs,
+  SelectArgs,
+  HoverArgs,
+  WaitForSelectorArgs,
+  ScreenshotArgs,
+  NavigateArgs,
+  GetTextArgs,
+  GetAttributeArgs,
+  SetViewportArgs
+} from './types/puppeteer-tools.js';
+import {
+  handleClick,
+  handleType,
+  handleSelect,
+  handleHover,
+  handleWaitForSelector,
+  handleScreenshot,
+  handleNavigate,
+  handleGetText,
+  handleGetAttribute,
+  handleSetViewport,
+  isClickArgs,
+  isTypeArgs,
+  isSelectArgs,
+  isHoverArgs,
+  isWaitForSelectorArgs,
+  isScreenshotArgs,
+  isNavigateArgs,
+  isGetTextArgs,
+  isGetAttributeArgs,
+  isSetViewportArgs
+} from './handlers/puppeteer-handlers.js';
 
 interface ConsoleAPICalledEvent {
   type: string;
@@ -94,6 +129,32 @@ class ChromeDebugServer {
   private browser: puppeteer.Browser | null = null;
   private cdpClient: Client | null = null;
   private consoleLogs: string[] = [];
+  private activePage: puppeteer.Page | null = null;
+
+  /**
+   * Gets the active page, throwing an error if Chrome isn't running or no page is active
+   */
+  private async getActivePage(): Promise<puppeteer.Page> {
+    if (!this.browser) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        'Chrome is not running. Call launch_chrome first.'
+      );
+    }
+
+    if (!this.activePage) {
+      const pages = await this.browser.pages();
+      this.activePage = pages[0];
+      if (!this.activePage) {
+        throw new McpError(
+          ErrorCode.InternalError,
+          'No active page found'
+        );
+      }
+    }
+
+    return this.activePage;
+  }
 
   constructor() {
     // Initialize MCP server with basic configuration
@@ -122,72 +183,7 @@ class ChromeDebugServer {
   private setupToolHandlers() {
     // Handler for listing available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [
-        {
-          name: 'launch_chrome',
-          description: 'Launch Chrome in debug mode',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              url: {
-                type: 'string',
-                description: 'URL to navigate to (optional)',
-              },
-              executablePath: {
-                type: 'string',
-                description: 'Path to Chrome executable (optional, uses bundled Chrome if not provided)',
-              },
-              userDataDir: {
-                type: 'string',
-                description: 'Path to a specific user data directory (optional, uses default Chrome profile if not provided)',
-              },
-              loadExtension: {
-                type: 'string',
-                description: 'Path to unpacked extension directory to load (optional)',
-              },
-              disableExtensionsExcept: {
-                type: 'string',
-                description: 'Path to extension that should remain enabled while others are disabled (optional)',
-              },
-              disableAutomationControlled: {
-                type: 'boolean',
-                description: 'Disable Chrome\'s "Automation Controlled" mode (optional, default: false)',
-              },
-              userscriptPath: {
-                type: 'string',
-                description: 'Path to userscript file to inject (optional)',
-              },
-            },
-          },
-        },
-        {
-          name: 'get_console_logs',
-          description: 'Get console logs from Chrome',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              clear: {
-                type: 'boolean',
-                description: 'Whether to clear logs after retrieving',
-              },
-            },
-          },
-        },
-        {
-          name: 'evaluate',
-          description: 'Evaluate JavaScript in Chrome',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              expression: {
-                type: 'string',
-                description: 'JavaScript code to evaluate',
-              },
-            },
-            required: ['expression'],
-          },
-        },
-      ],
+      tools: toolDefinitions,
     }));
 
     // Handler for executing tools
@@ -201,6 +197,36 @@ class ChromeDebugServer {
           return this.handleGetConsoleLogs(args as GetConsoleLogsArgs);
         case 'evaluate':
           return this.handleEvaluate(args as EvaluateArgs);
+        case 'click':
+          if (!isClickArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid click arguments');
+          return handleClick(await this.getActivePage(), args);
+        case 'type':
+          if (!isTypeArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid type arguments');
+          return handleType(await this.getActivePage(), args);
+        case 'select':
+          if (!isSelectArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid select arguments');
+          return handleSelect(await this.getActivePage(), args);
+        case 'hover':
+          if (!isHoverArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid hover arguments');
+          return handleHover(await this.getActivePage(), args);
+        case 'wait_for_selector':
+          if (!isWaitForSelectorArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid wait_for_selector arguments');
+          return handleWaitForSelector(await this.getActivePage(), args);
+        case 'screenshot':
+          if (!isScreenshotArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid screenshot arguments');
+          return handleScreenshot(await this.getActivePage(), args);
+        case 'navigate':
+          if (!isNavigateArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid navigate arguments');
+          return handleNavigate(await this.getActivePage(), args);
+        case 'get_text':
+          if (!isGetTextArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid get_text arguments');
+          return handleGetText(await this.getActivePage(), args);
+        case 'get_attribute':
+          if (!isGetAttributeArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid get_attribute arguments');
+          return handleGetAttribute(await this.getActivePage(), args);
+        case 'set_viewport':
+          if (!isSetViewportArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid set_viewport arguments');
+          return handleSetViewport(await this.getActivePage(), args);
         default:
           throw new McpError(
             ErrorCode.MethodNotFound,

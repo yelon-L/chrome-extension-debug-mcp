@@ -11,6 +11,15 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 - Extension support and management
 - Disable Chrome's "Automation Controlled" banner
 
+### Page Automation
+- Click, type, and interact with page elements
+- Handle dropdowns and form inputs
+- Hover and wait for elements
+- Take screenshots of full page or elements
+- Navigate between pages
+- Set viewport size and device emulation
+- Extract text and attributes from elements
+
 ### Debugging Capabilities
 - Remote debugging via Chrome DevTools Protocol (CDP)
 - Console log capture and monitoring
@@ -80,6 +89,8 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 
 ## Usage
 
+For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
+
 ### Basic Chrome Launch
 ```javascript
 use_mcp_tool({
@@ -135,6 +146,83 @@ use_mcp_tool({
   tool_name: "get_console_logs",
   arguments: {
     clear: true
+  }
+})
+```
+
+### Page Interaction Examples
+
+#### Click an Element
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "click",
+  arguments: {
+    selector: "#submit-button",
+    delay: 500
+  }
+})
+```
+
+#### Type into Input
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "type",
+  arguments: {
+    selector: "#search-input",
+    text: "search query",
+    delay: 100
+  }
+})
+```
+
+#### Select from Dropdown
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "select",
+  arguments: {
+    selector: "#country-select",
+    value: "US"
+  }
+})
+```
+
+#### Wait for Element
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "wait_for_selector",
+  arguments: {
+    selector: ".loading-complete",
+    visible: true,
+    timeout: 5000
+  }
+})
+```
+
+#### Take Screenshot
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "screenshot",
+  arguments: {
+    path: "screenshot.png",
+    fullPage: true
+  }
+})
+```
+
+#### Set Viewport Size
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "set_viewport",
+  arguments: {
+    width: 1920,
+    height: 1080,
+    deviceScaleFactor: 1
   }
 })
 ```
