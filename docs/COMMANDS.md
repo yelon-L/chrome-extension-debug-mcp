@@ -32,6 +32,78 @@ Launches Chrome in debug mode with customizable configuration.
 </use_mcp_tool>
 ```
 
+### Tab Management
+
+#### list_tabs
+Lists all open tabs with their IDs, titles, and URLs.
+
+**Parameters:**
+None required
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>list_tabs</tool_name>
+<arguments>
+{}
+</use_mcp_tool>
+```
+
+#### new_tab
+Opens a new tab with an optional URL.
+
+**Parameters:**
+- `url` (string, optional): URL to open in the new tab
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>new_tab</tool_name>
+<arguments>
+{
+  "url": "https://example.com"
+}
+</use_mcp_tool>
+```
+
+#### close_tab
+Closes a specific tab by ID.
+
+**Parameters:**
+- `tabId` (string, required): ID of the tab to close
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>close_tab</tool_name>
+<arguments>
+{
+  "tabId": "tab-id-from-list-tabs"
+}
+</use_mcp_tool>
+```
+
+#### switch_tab
+Switches to a specific tab by ID.
+
+**Parameters:**
+- `tabId` (string, required): ID of the tab to switch to
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>switch_tab</tool_name>
+<arguments>
+{
+  "tabId": "tab-id-from-list-tabs"
+}
+</use_mcp_tool>
+```
+
 #### get_console_logs
 Retrieves console logs from Chrome.
 
