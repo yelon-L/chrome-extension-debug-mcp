@@ -369,7 +369,20 @@ Takes a screenshot of the page or element.
 
 ## GM Functions
 
-### GM_setValue(key: string, value: any)
+### Script Information
+
+#### GM_info
+Get metadata about the current userscript.
+
+```javascript
+console.log(GM_info.script.name);    // Script name
+console.log(GM_info.scriptHandler);  // 'Chrome Debug MCP'
+console.log(GM_info.version);        // Version string
+```
+
+### Storage Management
+
+#### GM_setValue(key: string, value: any)
 Stores a value persistently using Chrome's localStorage.
 
 ```javascript
@@ -377,7 +390,7 @@ GM_setValue('myKey', 'myValue');
 GM_setValue('myObject', { foo: 'bar' });
 ```
 
-### GM_getValue(key: string, defaultValue?: any)
+#### GM_getValue(key: string, defaultValue?: any)
 Retrieves a previously stored value.
 
 ```javascript
@@ -385,22 +398,101 @@ const myValue = GM_getValue('myKey', 'default');
 const myObject = GM_getValue('myObject', {});
 ```
 
-### GM_xmlhttpRequest(details: object)
+#### GM_deleteValue(key: string)
+Deletes a stored value.
+
+```javascript
+GM_deleteValue('myKey');
+```
+
+#### GM_listValues()
+Lists all stored value keys.
+
+```javascript
+const keys = GM_listValues(); // Returns array of keys
+```
+
+### HTTP Requests
+
+#### GM_xmlhttpRequest(details: object)
 Makes HTTP requests that bypass same-origin policy restrictions.
 
 ```javascript
 GM_xmlhttpRequest({
   url: 'https://api.example.com/data',
+  method: 'POST',                    // GET, POST, PUT, DELETE, etc.
+  headers: {                         // Custom headers
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer token'
+  },
+  data: JSON.stringify({ foo: 'bar' }), // Request body
+  binary: false,                     // Handle binary responses
+  timeout: 5000,                     // Request timeout in ms
   onload: function(response) {
     console.log(response.responseText);
+    console.log(response.responseHeaders);
+    console.log(response.status);
   },
   onerror: function(error) {
     console.error('Request failed:', error);
+  },
+  onprogress: function(progress) {   // Progress updates
+    console.log('Progress:', progress.loaded / progress.total);
   }
 });
 ```
 
-### GM_addStyle(css: string)
+### System Integration
+
+#### GM_setClipboard(text: string, info?: string)
+Copies text to the clipboard.
+
+```javascript
+GM_setClipboard('Text to copy');
+GM_setClipboard('<b>HTML</b>', 'text/html');
+```
+
+#### GM_notification(details: object | string)
+Shows desktop notifications.
+
+```javascript
+// Simple usage
+GM_notification('Hello World!');
+
+// Advanced usage
+GM_notification({
+  title: 'Notification Title',
+  text: 'Notification body text',
+  image: 'icon.png',
+  timeout: 5000,
+  onclick: function() {
+    console.log('Notification clicked');
+  },
+  ondone: function() {
+    console.log('Notification closed');
+  }
+});
+```
+
+### Resource Management
+
+#### GM_getResourceText(name: string)
+Gets the content of a resource as text.
+
+```javascript
+const resourceText = GM_getResourceText('myResource');
+```
+
+#### GM_getResourceURL(name: string)
+Gets the URL of a resource.
+
+```javascript
+const resourceUrl = GM_getResourceURL('myImage');
+```
+
+### Page Modification
+
+#### GM_addStyle(css: string)
 Adds custom CSS styles to the page.
 
 ```javascript
@@ -413,20 +505,42 @@ GM_addStyle(`
 `);
 ```
 
-### GM_openInTab(url: string)
-Opens a URL in a new browser tab.
+### Navigation
+
+#### GM_openInTab(url: string, options?: object)
+Opens a URL in a new browser tab with advanced options.
 
 ```javascript
+// Simple usage
 GM_openInTab('https://example.com');
+
+// Advanced usage
+const tab = GM_openInTab('https://example.com', {
+  active: true,     // Focus the new tab
+  insert: true,     // Insert after current tab
+  setParent: true   // Set opener relationship
+});
+
+tab.onclose = () => console.log('Tab closed');
+tab.close();        // Close the tab
 ```
 
-### GM_registerMenuCommand(name: string, fn: function)
-Registers a command in the userscript menu (stub implementation).
+### Menu Management
+
+#### GM_registerMenuCommand(name: string, fn: function, accessKey?: string)
+Registers a command in the userscript menu.
 
 ```javascript
-GM_registerMenuCommand('My Command', function() {
+const commandId = GM_registerMenuCommand('My Command', function() {
   console.log('Command executed');
-});
+}, 'C');
+```
+
+#### GM_unregisterMenuCommand(id: string)
+Removes a previously registered menu command.
+
+```javascript
+GM_unregisterMenuCommand(commandId);
 ```
 
 ## Error Handling

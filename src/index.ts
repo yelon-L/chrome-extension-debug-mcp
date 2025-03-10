@@ -493,23 +493,115 @@ class ChromeDebugServer {
           try {
             // Define GM_ functions that userscripts can use
             const gmFunctionsScript = `
-              // Store values persistently
+              // Define script metadata
+              window.GM_info = {
+                script: {
+                  name: 'Injected Script',
+                  version: '1.0.0',
+                  description: 'Injected via Chrome Debug MCP',
+                  includes: ['*'],
+                },
+                scriptHandler: 'Chrome Debug MCP',
+                version: '1.0.0'
+              };
+
+              // Storage functions
               window.GM_setValue = function(key, value) {
                 localStorage.setItem('GM_' + key, JSON.stringify(value));
               };
 
-              // Retrieve stored values
               window.GM_getValue = function(key, defaultValue) {
                 const value = localStorage.getItem('GM_' + key);
                 return value ? JSON.parse(value) : defaultValue;
               };
 
-              // Make HTTP requests (simplified implementation)
+              window.GM_deleteValue = function(key) {
+                localStorage.removeItem('GM_' + key);
+              };
+
+              window.GM_listValues = function() {
+                return Object.keys(localStorage)
+                  .filter(key => key.startsWith('GM_'))
+                  .map(key => key.slice(3));
+              };
+
+              // Enhanced HTTP requests
               window.GM_xmlhttpRequest = function(details) {
-                fetch(details.url)
-                  .then(r => r.text())
-                  .then(text => details.onload?.({ responseText: text }))
-                  .catch(err => details.onerror?.(err));
+                const {
+                  url,
+                  method = 'GET',
+                  headers = {},
+                  data = null,
+                  binary = false,
+                  timeout = 0,
+                  onload,
+                  onerror,
+                  onprogress,
+                  onreadystatechange
+                } = details;
+
+                const controller = new AbortController();
+                if (timeout) {
+                  setTimeout(() => controller.abort(), timeout);
+                }
+
+                fetch(url, {
+                  method,
+                  headers,
+                  body: data,
+                  signal: controller.signal
+                })
+                  .then(async response => {
+                    const responseData = binary ? await response.blob() : await response.text();
+                    onload?.({
+                      status: response.status,
+                      statusText: response.statusText,
+                      responseHeaders: Object.fromEntries([...response.headers]),
+                      responseText: binary ? undefined : responseData,
+                      response: responseData,
+                      readyState: 4
+                    });
+                  })
+                  .catch(err => onerror?.(err));
+              };
+
+              // Clipboard support
+              window.GM_setClipboard = function(text, info = 'text') {
+                navigator.clipboard.writeText(text).catch(console.error);
+              };
+
+              // Desktop notifications
+              window.GM_notification = function(details) {
+                if (typeof details === 'string') {
+                  details = { text: details };
+                }
+                
+                const { text, title = '', image = '', timeout = 0, onclick, ondone } = details;
+                
+                Notification.requestPermission().then(permission => {
+                  if (permission === 'granted') {
+                    const notification = new Notification(title, {
+                      body: text,
+                      icon: image
+                    });
+
+                    if (onclick) notification.onclick = onclick;
+                    if (timeout) setTimeout(() => {
+                      notification.close();
+                      ondone?.();
+                    }, timeout);
+                  }
+                });
+              };
+
+              // Resources (stub implementation - would need actual resource management)
+              const resources = new Map();
+              window.GM_getResourceText = function(name) {
+                return resources.get(name) || '';
+              };
+              
+              window.GM_getResourceURL = function(name) {
+                return resources.get(name) || '';
               };
 
               // Add CSS to the page
@@ -519,15 +611,35 @@ class ChromeDebugServer {
                 document.head.appendChild(style);
               };
 
-              // Open URL in new tab
-              window.GM_openInTab = function(url) {
-                window.open(url, '_blank');
+              // Open URL in new tab with more options
+              window.GM_openInTab = function(url, options = {}) {
+                const { active = true, insert = true, setParent = true } = options;
+                const win = window.open(url, '_blank');
+                if (win && setParent) {
+                  win.opener = window;
+                }
+                return {
+                  close: () => win?.close(),
+                  closed: () => win?.closed || false,
+                  focus: () => win?.focus(),
+                  onclose: null
+                };
               };
 
-              // Register menu commands (stub implementation)
-              window.GM_registerMenuCommand = function(name, fn) {
-                // Stub for menu command registration
+              // Register menu commands with better implementation
+              const menuCommands = new Map();
+              window.GM_registerMenuCommand = function(name, fn, accessKey) {
+                const id = Date.now().toString();
+                menuCommands.set(id, { name, fn, accessKey });
+                return id;
               };
+
+              window.GM_unregisterMenuCommand = function(id) {
+                return menuCommands.delete(id);
+              };
+
+              // Expose menu commands to the extension
+              window.__GM_COMMANDS__ = menuCommands;
 
               // Initialize API key if needed
               if (!localStorage.getItem('GM_nzbgeekApiKey')) {
