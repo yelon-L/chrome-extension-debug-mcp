@@ -184,5 +184,75 @@ This document captures key learnings from implementing a Chrome debug MCP server
   - Tests
 - Makes codebase more maintainable
 
+## GitHub Update Process
+
+### 1. Staged Commits
+- Make changes in logical, atomic units
+- Test each change before committing
+- Use descriptive commit messages that explain the "why" not just the "what"
+
+### 2. Documentation Updates
+1. First update implementation code
+2. Test the changes thoroughly
+3. Update documentation to reflect changes
+4. Review documentation for accuracy
+5. Commit documentation separately from code
+
+### 3. Commit Message Structure
+```
+[Component] Brief description of change
+
+- Detailed explanation of changes
+- Reasoning behind changes
+- Impact on existing functionality
+```
+
+Example:
+```
+[Notifications] Enhance system with fallback support
+
+- Add multi-level fallback system
+- Improve permission handling
+- Add comprehensive testing
+- Update documentation with examples
+```
+
+### 4. Testing Before Push
+1. Build project locally
+2. Run all tests
+3. Verify documentation accuracy
+4. Push changes only after all checks pass
+
+## Notification System Learnings
+
+### 1. Permission Handling
+- Request permissions early
+- Handle all permission states (granted, denied, default)
+- Provide graceful fallbacks for each state
+
+### 2. Fallback System Design
+- Implement multiple fallback levels
+- Maintain consistent behavior across fallbacks
+- Log fallback usage for monitoring
+
+### 3. Testing Improvements
+- Test all notification types
+- Verify callback execution
+- Check permission scenarios
+- Test sequential notifications
+- Monitor performance impact
+
+### 4. UI Considerations
+- Consistent styling across fallbacks
+- Proper cleanup of UI elements
+- Handle window focus properly
+- Support emoji in notifications
+
+### 5. Error Recovery
+- Graceful handling of failed notifications
+- Clear error logging
+- Multiple fallback options
+- User feedback preservation
+
 ## Conclusion
-The Chrome debug MCP server implementation provided valuable insights into browser automation, script injection, and debugging. The addition of Puppeteer commands significantly enhanced the server's capabilities, providing a robust foundation for automated browser interaction through the MCP interface.
+The Chrome debug MCP server implementation provided valuable insights into browser automation, script injection, and debugging. The addition of Puppeteer commands and enhanced notification system significantly improved the server's capabilities, providing a robust foundation for automated browser interaction through the MCP interface. The structured GitHub update process ensures maintainable and well-documented code changes.
