@@ -565,33 +565,143 @@ class ChromeDebugServer {
                   .catch(err => onerror?.(err));
               };
 
-              // Clipboard support
-              window.GM_setClipboard = function(text, info = 'text') {
-                navigator.clipboard.writeText(text).catch(console.error);
+              // Enhanced clipboard support with fallback
+              window.GM_setClipboard = async function(text, info = 'text') {
+                try {
+                  // Focus page if needed
+                  if (!document.hasFocus()) {
+                    window.focus();
+                  }
+
+                  if (info === 'html') {
+                    // Handle HTML content
+                    await navigator.clipboard.write([
+                      new ClipboardItem({
+                        'text/html': new Blob([text], { type: 'text/html' }),
+                        'text/plain': new Blob([text.replace(/<[^>]*>/g, '')], { type: 'text/plain' })
+                      })
+                    ]);
+                  } else {
+                    // Handle plain text
+                    await navigator.clipboard.writeText(text);
+                  }
+                  console.log('Content copied to clipboard successfully');
+                } catch (error) {
+                  console.warn('Clipboard API failed, using fallback method');
+                  // Fallback method
+                  const textarea = document.createElement('textarea');
+                  textarea.value = text;
+                  textarea.style.position = 'fixed';
+                  textarea.style.opacity = '0';
+                  document.body.appendChild(textarea);
+                  textarea.focus();
+                  textarea.select();
+                  
+                  try {
+                    document.execCommand('copy');
+                    console.log('Content copied to clipboard using fallback method');
+                  } catch (err) {
+                    console.error('Clipboard copy failed:', err);
+                  }
+                  document.body.removeChild(textarea);
+                }
               };
 
-              // Desktop notifications
-              window.GM_notification = function(details) {
-                if (typeof details === 'string') {
-                  details = { text: details };
+              // Enhanced notifications with permissions handling
+              window.GM_notification = async function(details) {
+                const notificationDetails = typeof details === 'string' ? { text: details } : details;
+                const { text, title = '', image = '', timeout = 0, onclick, ondone } = notificationDetails;
+
+                function createNotificationElement() {
+                  const div = document.createElement('div');
+                  const styles = {
+                    position: 'fixed',
+                    top: '20px',
+                    right: '20px',
+                    padding: '15px',
+                    backgroundColor: '#333',
+                    color: '#ffffff',
+                    borderRadius: '5px',
+                    zIndex: '999999',
+                    maxWidth: '300px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                    opacity: '1',
+                    transition: 'opacity 0.3s'
+                  };
+                  Object.assign(div.style, styles);
+
+                  const titleElement = document.createElement('div');
+                  titleElement.style.marginBottom = '5px';
+                  titleElement.style.fontWeight = 'bold';
+                  titleElement.textContent = title;
+
+                  const textElement = document.createElement('div');
+                  textElement.textContent = text;
+
+                  div.appendChild(titleElement);
+                  div.appendChild(textElement);
+                  return div;
                 }
-                
-                const { text, title = '', image = '', timeout = 0, onclick, ondone } = details;
-                
-                Notification.requestPermission().then(permission => {
+
+                function showFallbackNotification() {
+                  try {
+                    const div = createNotificationElement();
+                    document.body.appendChild(div);
+
+                    if (onclick) {
+                      div.style.cursor = 'pointer';
+                      div.onclick = onclick;
+                    }
+
+                    setTimeout(() => {
+                      div.style.opacity = '0';
+                      setTimeout(() => {
+                        if (div.parentNode) {
+                          div.parentNode.removeChild(div);
+                          ondone?.();
+                        }
+                      }, 300);
+                    }, timeout || 4700);
+                  } catch (error) {
+                    console.log('\u{1F514} ' + (title ? title + ': ' : '') + text);
+                  }
+                }
+
+                if (!('Notification' in window)) {
+                  showFallbackNotification();
+                  return;
+                }
+
+                try {
+                  const permission = await Notification.requestPermission();
                   if (permission === 'granted') {
                     const notification = new Notification(title, {
                       body: text,
-                      icon: image
+                      icon: image,
+                      requireInteraction: Boolean(!timeout)
                     });
 
-                    if (onclick) notification.onclick = onclick;
-                    if (timeout) setTimeout(() => {
-                      notification.close();
-                      ondone?.();
-                    }, timeout);
+                    if (onclick) {
+                      notification.onclick = () => {
+                        window.focus();
+                        onclick();
+                      };
+                    }
+
+                    if (timeout) {
+                      setTimeout(() => {
+                        notification.close();
+                        ondone?.();
+                      }, timeout);
+                    }
+
+                    notification.onclose = () => ondone?.();
+                  } else {
+                    showFallbackNotification();
                   }
-                });
+                } catch (error) {
+                  showFallbackNotification();
+                }
               };
 
               // Resources (stub implementation - would need actual resource management)
