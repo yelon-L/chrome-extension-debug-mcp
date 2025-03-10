@@ -2,6 +2,120 @@
 
 A Model Context Protocol (MCP) server for controlling Chrome with debugging capabilities, userscript injection, and extension support.
 
+## Use Case Scenarios
+
+### 1. Web Scraping with Authentication
+```javascript
+// Launch Chrome with custom profile (containing cookies)
+await launch_chrome({ userDataDir: "path/to/profile" })
+
+// Navigate and wait for login form
+await wait_for_selector({ selector: "#login-form" })
+await type({ selector: "#username", text: "user" })
+await type({ selector: "#password", text: "pass" })
+await click({ selector: "#submit" })
+
+// Wait for authenticated content and extract data
+await wait_for_selector({ selector: ".content" })
+const data = await get_text({ selector: ".data-table" })
+```
+
+### 2. Automated Testing with Console Monitoring
+```javascript
+// Launch with console monitoring
+await launch_chrome({ url: "https://test-site.com" })
+
+// Inject test script
+await evaluate({ expression: `
+  console.log('Starting tests...');
+  runTests().then(results => {
+    console.log('Tests complete:', results);
+  });
+`})
+
+// Monitor test progress
+const logs = await get_console_logs({ clear: false })
+```
+
+### 3. Multi-Tab Workflow Automation
+```javascript
+// Open multiple tabs for parallel processing
+const tab1 = await new_tab({ url: "https://site1.com" })
+const tab2 = await new_tab({ url: "https://site2.com" })
+
+// Switch between tabs and process data
+await switch_tab({ tabId: tab1 })
+await process_site_1()
+
+await switch_tab({ tabId: tab2 })
+await process_site_2()
+```
+
+### 4. Enhanced Web Automation with Userscripts
+```javascript
+// Launch with userscript for enhanced functionality
+await launch_chrome({
+  url: "https://target-site.com",
+  userscriptPath: "automation-helper.js"
+})
+
+// Use injected GM functions
+await evaluate({
+  expression: `
+    GM_addStyle('.highlight { background: yellow; }');
+    GM_setValue('lastRun', Date.now());
+    await GM_notification('Processing complete!');
+  `
+})
+```
+
+### 5. Extension-Based Automation
+```javascript
+// Launch with specific extension enabled
+await launch_chrome({
+  loadExtension: "path/to/automation/extension",
+  disableExtensionsExcept: "path/to/automation/extension",
+  disableAutomationControlled: true
+})
+
+// Interact with extension-modified page
+await wait_for_selector({ selector: "#extension-button" })
+await click({ selector: "#extension-button" })
+```
+
+### 6. Visual Regression Testing
+```javascript
+// Set consistent viewport
+await set_viewport({ width: 1920, height: 1080 })
+
+// Capture baseline
+await screenshot({
+  path: "baseline.png",
+  fullPage: true
+})
+
+// Make changes and compare
+await click({ selector: "#theme-toggle" })
+await screenshot({
+  path: "comparison.png",
+  fullPage: true
+})
+```
+
+### 7. Form Automation with Validation
+```javascript
+// Fill complex form with error checking
+await type({ selector: "#email", text: "test@example.com" })
+await select({ selector: "#country", value: "US" })
+
+// Wait for validation and check console for errors
+await wait_for_selector({ selector: ".validation-complete" })
+const logs = await get_console_logs({ clear: true })
+if (logs.includes("validation error")) {
+  // Handle error case
+}
+```
+
 ## Features
 
 ### Chrome Control

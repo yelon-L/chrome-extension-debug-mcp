@@ -4,6 +4,38 @@ This document provides a comprehensive reference for all commands and functions 
 
 ## MCP Tools
 
+### Common Use Cases
+
+#### Web Scraping
+- Use `launch_chrome` with custom profile for authenticated sessions
+- Combine `wait_for_selector` and `get_text` for data extraction
+- Use `screenshot` for visual verification
+- Monitor errors with `get_console_logs`
+
+#### Form Automation
+- `type` for input fields
+- `select` for dropdowns
+- `click` for form submission
+- `wait_for_selector` for validation messages
+
+#### Multi-Tab Workflows
+- `new_tab` for parallel processing
+- `switch_tab` to manage multiple workflows
+- `list_tabs` to track open processes
+- `close_tab` for cleanup
+
+#### Visual Testing
+- `set_viewport` for consistent dimensions
+- `screenshot` for capturing states
+- `evaluate` for triggering UI changes
+- `wait_for_selector` for animation completion
+
+#### Extension Testing
+- `launch_chrome` with extension loading
+- `get_console_logs` for extension debugging
+- `evaluate` for interacting with extension APIs
+- Custom profile management for extension state
+
 ### Browser Control
 
 #### launch_chrome
