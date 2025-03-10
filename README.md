@@ -20,6 +20,13 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 - Set viewport size and device emulation
 - Extract text and attributes from elements
 
+### Tab Management
+- List all open tabs with their IDs and URLs
+- Open new tabs with specified URLs
+- Close tabs by ID
+- Switch between tabs
+- Track and manage multiple tab states
+
 ### Debugging Capabilities
 - Remote debugging via Chrome DevTools Protocol (CDP)
 - Console log capture and monitoring
@@ -223,6 +230,50 @@ use_mcp_tool({
     width: 1920,
     height: 1080,
     deviceScaleFactor: 1
+  }
+})
+```
+
+### Tab Management Examples
+
+#### List All Tabs
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "list_tabs",
+  arguments: {}
+})
+```
+
+#### Open New Tab
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "new_tab",
+  arguments: {
+    url: "https://example.com"
+  }
+})
+```
+
+#### Switch to Tab
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "switch_tab",
+  arguments: {
+    tabId: "tab-id-from-list-tabs"
+  }
+})
+```
+
+#### Close Tab
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "close_tab",
+  arguments: {
+    tabId: "tab-id-from-list-tabs"
   }
 })
 ```
