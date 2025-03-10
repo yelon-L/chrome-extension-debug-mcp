@@ -2,6 +2,55 @@
 
 export const toolDefinitions = [
   {
+    name: 'list_tabs',
+    description: 'List all open tabs',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'new_tab',
+    description: 'Open a new tab',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL to open in the new tab (optional)',
+        },
+      },
+    },
+  },
+  {
+    name: 'close_tab',
+    description: 'Close a specific tab',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabId: {
+          type: 'string',
+          description: 'ID of the tab to close',
+        },
+      },
+      required: ['tabId'],
+    },
+  },
+  {
+    name: 'switch_tab',
+    description: 'Switch to a specific tab',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tabId: {
+          type: 'string',
+          description: 'ID of the tab to switch to',
+        },
+      },
+      required: ['tabId'],
+    },
+  },
+  {
     name: 'launch_chrome',
     description: 'Launch Chrome in debug mode',
     inputSchema: {

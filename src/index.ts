@@ -130,9 +130,57 @@ class ChromeDebugServer {
   private cdpClient: Client | null = null;
   private consoleLogs: string[] = [];
   private activePage: puppeteer.Page | null = null;
+  private pageMap: Map<string, puppeteer.Page> = new Map();
 
   /**
    * Gets the active page, throwing an error if Chrome isn't running or no page is active
+   */
+  /**
+   * Gets a unique ID for a page
+   */
+  private async getPageId(page: puppeteer.Page): Promise<string> {
+    const url = page.url();
+    const title = await page.title();
+    // Create a unique ID from URL and title, fallback to timestamp if both empty
+    return Buffer.from(`${url}-${title || Date.now()}`).toString('base64');
+  }
+
+  /**
+   * Updates the page map with all current pages
+   */
+  private async updatePageMap(): Promise<void> {
+    if (!this.browser) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        'Chrome is not running. Call launch_chrome first.'
+      );
+    }
+
+    const pages = await this.browser.pages();
+    this.pageMap.clear();
+    for (const page of pages) {
+      const id = await this.getPageId(page);
+      this.pageMap.set(id, page);
+    }
+  }
+
+  /**
+   * Gets a page by its ID
+   */
+  private async getPageById(tabId: string): Promise<puppeteer.Page> {
+    await this.updatePageMap();
+    const page = this.pageMap.get(tabId);
+    if (!page) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Tab not found: ${tabId}`
+      );
+    }
+    return page;
+  }
+
+  /**
+   * Gets the active page, or the first available page
    */
   private async getActivePage(): Promise<puppeteer.Page> {
     if (!this.browser) {
@@ -151,9 +199,96 @@ class ChromeDebugServer {
           'No active page found'
         );
       }
+      await this.updatePageMap();
     }
 
     return this.activePage;
+  }
+
+  /**
+   * Handles listing all open tabs
+   */
+  private async handleListTabs() {
+    await this.updatePageMap();
+    const tabs = [];
+    for (const [id, page] of this.pageMap) {
+      const title = await page.title();
+      const url = page.url();
+      tabs.push({ id, title, url });
+    }
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(tabs, null, 2)
+      }]
+    };
+  }
+
+  /**
+   * Handles opening a new tab
+   */
+  private async handleNewTab(args: { url?: string }) {
+    const page = await this.browser?.newPage();
+    if (!page) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        'Failed to create new tab'
+      );
+    }
+
+    if (args.url) {
+      await page.goto(args.url, { waitUntil: 'networkidle0' });
+    }
+
+    const id = await this.getPageId(page);
+    this.pageMap.set(id, page);
+    this.activePage = page;
+
+    return {
+      content: [{
+        type: 'text',
+        text: `New tab created with ID: ${id}`
+      }]
+    };
+  }
+
+  /**
+   * Handles closing a specific tab
+   */
+  private async handleCloseTab(args: { tabId: string }) {
+    const page = await this.getPageById(args.tabId);
+    await page.close();
+    
+    // Clear and rebuild the page map after closing
+    await this.updatePageMap();
+    
+    if (this.activePage === page) {
+      const pages = await this.browser?.pages();
+      this.activePage = pages?.[0] || null;
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Closed tab: ${args.tabId}`
+      }]
+    };
+  }
+
+  /**
+   * Handles switching to a specific tab
+   */
+  private async handleSwitchTab(args: { tabId: string }) {
+    const page = await this.getPageById(args.tabId);
+    await page.bringToFront();
+    this.activePage = page;
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Switched to tab: ${args.tabId}`
+      }]
+    };
   }
 
   constructor() {
@@ -227,6 +362,16 @@ class ChromeDebugServer {
         case 'set_viewport':
           if (!isSetViewportArgs(args)) throw new McpError(ErrorCode.InvalidParams, 'Invalid set_viewport arguments');
           return handleSetViewport(await this.getActivePage(), args);
+        case 'list_tabs':
+          return this.handleListTabs();
+        case 'new_tab':
+          return this.handleNewTab(args as { url?: string });
+        case 'close_tab':
+          if (!args.tabId) throw new McpError(ErrorCode.InvalidParams, 'Tab ID is required');
+          return this.handleCloseTab(args as { tabId: string });
+        case 'switch_tab':
+          if (!args.tabId) throw new McpError(ErrorCode.InvalidParams, 'Tab ID is required');
+          return this.handleSwitchTab(args as { tabId: string });
         default:
           throw new McpError(
             ErrorCode.MethodNotFound,
