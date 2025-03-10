@@ -453,26 +453,79 @@ GM_setClipboard('<b>HTML</b>', 'text/html');
 ```
 
 #### GM_notification(details: object | string)
-Shows desktop notifications.
+Shows desktop notifications with robust fallback behavior and enhanced features.
 
+**Parameters:**
+- `details`: String for simple notifications, or object with:
+  - `title` (string, optional): Notification title
+  - `text` (string, required): Notification content
+  - `image` (string, optional): URL for notification icon
+  - `timeout` (number, optional): Auto-close timeout in milliseconds (0 for no timeout)
+  - `onclick` (function, optional): Click handler with automatic window focus
+  - `ondone` (function, optional): Completion callback
+
+**Features:**
+- Automatic permission handling
+- Multi-level fallback system:
+  1. Native browser notifications
+  2. Custom UI overlay with similar behavior
+  3. Console output as last resort
+- Window focus management for click handlers
+- Timeout and lifecycle management
+- Persistent notifications (timeout: 0)
+
+**Examples:**
 ```javascript
-// Simple usage
-GM_notification('Hello World!');
+// Simple text notification
+GM_notification('Quick message');
 
-// Advanced usage
+// Timed notification with completion tracking
 GM_notification({
-  title: 'Notification Title',
-  text: 'Notification body text',
-  image: 'icon.png',
+  title: 'Timer',
+  text: 'Closes in 5 seconds',
   timeout: 5000,
-  onclick: function() {
-    console.log('Notification clicked');
-  },
-  ondone: function() {
-    console.log('Notification closed');
+  ondone: () => console.log('Timer complete')
+});
+
+// Interactive persistent notification
+GM_notification({
+  title: 'Action Required',
+  text: 'Click to respond',
+  timeout: 0,  // Stay open until clicked
+  onclick: () => {
+    console.log('User responded');
+    // Handle interaction
   }
 });
+
+// Rich notification with all features
+GM_notification({
+  title: '🎉 Rich Content',
+  text: 'Full-featured notification',
+  image: 'icon.png',
+  timeout: 3000,
+  onclick: () => {
+    window.focus();
+    console.log('Notification clicked');
+  },
+  ondone: () => console.log('Notification closed')
+});
 ```
+
+**Fallback Behavior:**
+1. Attempts native notifications with permission request
+2. Falls back to custom UI overlay if:
+   - Notifications not supported
+   - Permission denied
+   - Native notification fails
+3. Ultimate fallback to console if UI creation fails
+
+**Best Practices:**
+- Use timeouts appropriate for content importance
+- Provide clear click actions when interactive
+- Handle both success and failure cases in callbacks
+- Consider using emoji in titles for better visibility
+- Test with permissions both granted and denied
 
 ### Resource Management
 
