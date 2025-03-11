@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server for controlling Chrome with debugging capabilities, userscript injection, and extension support.
 
+<a href="https://glama.ai/mcp/servers/nguhnsghor">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/nguhnsghor/badge" alt="Chrome Debug Server MCP server" />
+</a>
+
 ## Features
 
 ### Chrome Control
