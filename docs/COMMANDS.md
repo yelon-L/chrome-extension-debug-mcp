@@ -36,6 +36,12 @@ This document provides a comprehensive reference for all commands and functions 
 - `evaluate` for interacting with extension APIs
 - Custom profile management for extension state
 
+#### State Monitoring
+- `wait_for_state_change` for dynamic content updates
+- `watch_url_changes` for URL and history tracking
+- `intercept_network` for API request monitoring
+- Combine with console logs for comprehensive debugging
+
 ### Browser Control
 
 #### launch_chrome
@@ -63,8 +69,73 @@ Launches Chrome in debug mode with customizable configuration.
 </arguments>
 </use_mcp_tool>
 ```
+### State Monitoring
+
+#### wait_for_state_change
+Waits for application state changes after navigation/interaction.
+
+**Parameters:**
+- `timeout` (number, optional): How long to wait for state changes (ms)
+- `selector` (string, optional): Optional DOM selector to watch
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>wait_for_state_change</tool_name>
+<arguments>
+{
+  "timeout": 5000,
+  "selector": "#dynamic-content"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+#### watch_url_changes
+Monitors and logs URL changes with associated state.
+
+**Parameters:**
+- `duration` (number, required): How long to watch for changes (ms)
+- `includeState` (boolean, optional): Whether to include app state snapshots
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>watch_url_changes</tool_name>
+<arguments>
+{
+  "duration": 10000,
+  "includeState": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+#### intercept_network
+Monitors and logs network requests.
+
+**Parameters:**
+- `patterns` (array, required): URL patterns to watch
+- `includeHeaders` (boolean, optional): Include request/response headers
+
+**Example:**
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>intercept_network</tool_name>
+<arguments>
+{
+  "patterns": ["https://api.example.com/*"],
+  "includeHeaders": true
+}
+</arguments>
+</use_mcp_tool>
+```
 
 ### Tab Management
+
 
 #### list_tabs
 Lists all open tabs with their IDs, titles, and URLs.
@@ -586,6 +657,33 @@ GM_addStyle(`
     background: red;
     color: white;
     padding: 10px;
+  }
+`);
+```
+
+## State Monitoring Best Practices
+
+### Dynamic Content Handling
+1. Use `wait_for_state_change` to detect DOM mutations:
+   - Set appropriate timeouts based on expected response times
+   - Provide specific selectors when possible
+   - Consider using with console logs for debugging
+
+2. Monitor URL changes in single-page applications:
+   - Use `watch_url_changes` with sufficient duration
+   - Enable state snapshots for debugging
+   - Track history API calls and routing changes
+
+3. Network Request Monitoring:
+   - Use specific patterns with `intercept_network` to reduce overhead
+   - Include headers when debugging authentication issues
+   - Combine with console logs for comprehensive debugging
+
+4. General Tips:
+   - Chain state monitoring tools appropriately
+   - Handle timeouts and errors gracefully
+   - Clean up monitoring when no longer needed
+   - Consider memory usage in long-running monitoring
   }
 `);
 ```

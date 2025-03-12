@@ -184,7 +184,65 @@ pkill chrome
 </use_mcp_tool>
 ```
 
-### 6. Performance Issues
+### 6. State Monitoring Issues
+
+**Symptoms:**
+- Missing state changes
+- Network requests not intercepted
+- URL changes not detected
+- Timeouts during monitoring
+
+**Solutions:**
+
+1. Verify state change detection:
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>wait_for_state_change</tool_name>
+<arguments>
+{
+  "timeout": 10000,
+  "selector": "#target-element"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+2. Check network interception patterns:
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>intercept_network</tool_name>
+<arguments>
+{
+  "patterns": ["*://*/*"],
+  "includeHeaders": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+3. Monitor URL changes with longer duration:
+```javascript
+<use_mcp_tool>
+<server_name>chrome-debug</server_name>
+<tool_name>watch_url_changes</tool_name>
+<arguments>
+{
+  "duration": 30000,
+  "includeState": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+4. Common fixes:
+- Increase timeouts for dynamic content
+- Use more specific selectors
+- Verify URL patterns match targets
+- Check console for state change events
+
+### 7. Performance Issues
 
 **Symptoms:**
 - Chrome runs slowly
