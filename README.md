@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Chrome Debug MCP Playwright
 
 A Model Context Protocol (MCP) implementation for browser automation using Playwright, with full Greasemonkey API support.
@@ -133,16 +134,24 @@ Based on the original [chrome-debug-mcp](https://github.com/robertheadley/chrome
 =======
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 # Chrome Debug MCP Server
 
 A Model Context Protocol (MCP) server for controlling Chrome with debugging capabilities, userscript injection, and extension support.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 <a href="https://glama.ai/mcp/servers/nguhnsghor">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/nguhnsghor/badge" alt="Chrome Debug Server MCP server" />
 </a>
 
+<<<<<<< HEAD
+>>>>>>> parent of 64acbb3 (Add files via upload)
+=======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 ## Features
 
@@ -154,7 +163,10 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 - Disable Chrome's "Automation Controlled" banner
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 ### Page Automation
 - Click, type, and interact with page elements
 - Handle dropdowns and form inputs
@@ -171,6 +183,9 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 - Switch between tabs
 - Track and manage multiple tab states
 
+<<<<<<< HEAD
+>>>>>>> parent of 64acbb3 (Add files via upload)
+=======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 ### Debugging Capabilities
 - Remote debugging via Chrome DevTools Protocol (CDP)
@@ -242,6 +257,11 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 ## Usage
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
+
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
 
@@ -306,7 +326,10 @@ use_mcp_tool({
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 ### Page Interaction Examples
 
 #### Click an Element
@@ -428,6 +451,9 @@ use_mcp_tool({
 })
 ```
 
+<<<<<<< HEAD
+>>>>>>> parent of 64acbb3 (Add files via upload)
+=======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 ## Dependencies
 
@@ -450,8 +476,12 @@ See our [Contributing Guide](CONTRIBUTING.md) for details on making contribution
 - [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
 - [Greasemonkey API](https://wiki.greasespot.net/Greasemonkey_Manual:API)
 <<<<<<< HEAD
+<<<<<<< HEAD
 - [Model Context Protocol](https://modelcontextprotocol.ai)
 >>>>>>> parent of 8a57443 (Merge pull request #4 from robertheadley/feature/puppeteer-commands)
+=======
+- [Model Context Protocol](https://modelcontextprotocol.ai)
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 - [Model Context Protocol](https://modelcontextprotocol.ai)
 >>>>>>> parent of 64acbb3 (Add files via upload)

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "chrome-debug-mcp",
   "version": "1.0.0",
@@ -23,3 +24,30 @@
     "typescript": "^5.0.0"
   }
 }
+=======
+{
+  "name": "chrome-debug-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc && node build/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Chrome debugger MCP server",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "chrome-remote-interface": "^0.33.0",
+    "puppeteer": "^22.8.2"
+  },
+  "devDependencies": {
+    "@types/chrome-remote-interface": "^0.31.14",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+>>>>>>> parent of 64acbb3 (Add files via upload)
