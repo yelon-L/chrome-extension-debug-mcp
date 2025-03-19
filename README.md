@@ -4,6 +4,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Chrome Debug MCP Playwright
 
 A Model Context Protocol (MCP) implementation for browser automation using Playwright, with full Greasemonkey API support.
@@ -145,6 +146,8 @@ Based on the original [chrome-debug-mcp](https://github.com/robertheadley/chrome
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 # Chrome Debug MCP Server
 
 A Model Context Protocol (MCP) server for controlling Chrome with debugging capabilities, userscript injection, and extension support.
@@ -154,7 +157,10 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
@@ -171,6 +177,9 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> parent of 64acbb3 (Add files via upload)
+=======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
@@ -194,7 +203,10 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
@@ -223,6 +235,9 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> parent of 64acbb3 (Add files via upload)
+=======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
@@ -306,6 +321,11 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
+
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
 
@@ -390,7 +410,10 @@ use_mcp_tool({
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
@@ -524,6 +547,9 @@ use_mcp_tool({
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+>>>>>>> parent of 64acbb3 (Add files via upload)
+=======
 >>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 >>>>>>> parent of 64acbb3 (Add files via upload)
@@ -558,8 +584,12 @@ See our [Contributing Guide](CONTRIBUTING.md) for details on making contribution
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 - [Model Context Protocol](https://modelcontextprotocol.ai)
 >>>>>>> parent of 8a57443 (Merge pull request #4 from robertheadley/feature/puppeteer-commands)
+=======
+- [Model Context Protocol](https://modelcontextprotocol.ai)
+>>>>>>> parent of 64acbb3 (Add files via upload)
 =======
 - [Model Context Protocol](https://modelcontextprotocol.ai)
 >>>>>>> parent of 64acbb3 (Add files via upload)
