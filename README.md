@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Chrome Debug MCP Playwright
 
 A Model Context Protocol (MCP) implementation for browser automation using Playwright, with full Greasemonkey API support.
@@ -130,10 +131,19 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 Based on the original [chrome-debug-mcp](https://github.com/robertheadley/chrome-debug-mcp) by Robert Headley.
 =======
+=======
+>>>>>>> parent of 64acbb3 (Add files via upload)
 # Chrome Debug MCP Server
 
 A Model Context Protocol (MCP) server for controlling Chrome with debugging capabilities, userscript injection, and extension support.
 
+<<<<<<< HEAD
+=======
+<a href="https://glama.ai/mcp/servers/nguhnsghor">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/nguhnsghor/badge" alt="Chrome Debug Server MCP server" />
+</a>
+
+>>>>>>> parent of 64acbb3 (Add files via upload)
 ## Features
 
 ### Chrome Control
@@ -143,6 +153,25 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 - Extension support and management
 - Disable Chrome's "Automation Controlled" banner
 
+<<<<<<< HEAD
+=======
+### Page Automation
+- Click, type, and interact with page elements
+- Handle dropdowns and form inputs
+- Hover and wait for elements
+- Take screenshots of full page or elements
+- Navigate between pages
+- Set viewport size and device emulation
+- Extract text and attributes from elements
+
+### Tab Management
+- List all open tabs with their IDs and URLs
+- Open new tabs with specified URLs
+- Close tabs by ID
+- Switch between tabs
+- Track and manage multiple tab states
+
+>>>>>>> parent of 64acbb3 (Add files via upload)
 ### Debugging Capabilities
 - Remote debugging via Chrome DevTools Protocol (CDP)
 - Console log capture and monitoring
@@ -212,6 +241,11 @@ A Model Context Protocol (MCP) server for controlling Chrome with debugging capa
 
 ## Usage
 
+<<<<<<< HEAD
+=======
+For a complete reference of all available commands, tools, and functions, see [COMMANDS.md](docs/COMMANDS.md).
+
+>>>>>>> parent of 64acbb3 (Add files via upload)
 ### Basic Chrome Launch
 ```javascript
 use_mcp_tool({
@@ -271,6 +305,130 @@ use_mcp_tool({
 })
 ```
 
+<<<<<<< HEAD
+=======
+### Page Interaction Examples
+
+#### Click an Element
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "click",
+  arguments: {
+    selector: "#submit-button",
+    delay: 500
+  }
+})
+```
+
+#### Type into Input
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "type",
+  arguments: {
+    selector: "#search-input",
+    text: "search query",
+    delay: 100
+  }
+})
+```
+
+#### Select from Dropdown
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "select",
+  arguments: {
+    selector: "#country-select",
+    value: "US"
+  }
+})
+```
+
+#### Wait for Element
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "wait_for_selector",
+  arguments: {
+    selector: ".loading-complete",
+    visible: true,
+    timeout: 5000
+  }
+})
+```
+
+#### Take Screenshot
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "screenshot",
+  arguments: {
+    path: "screenshot.png",
+    fullPage: true
+  }
+})
+```
+
+#### Set Viewport Size
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "set_viewport",
+  arguments: {
+    width: 1920,
+    height: 1080,
+    deviceScaleFactor: 1
+  }
+})
+```
+
+### Tab Management Examples
+
+#### List All Tabs
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "list_tabs",
+  arguments: {}
+})
+```
+
+#### Open New Tab
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "new_tab",
+  arguments: {
+    url: "https://example.com"
+  }
+})
+```
+
+#### Switch to Tab
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "switch_tab",
+  arguments: {
+    tabId: "tab-id-from-list-tabs"
+  }
+})
+```
+
+#### Close Tab
+```javascript
+use_mcp_tool({
+  server_name: "chrome-debug",
+  tool_name: "close_tab",
+  arguments: {
+    tabId: "tab-id-from-list-tabs"
+  }
+})
+```
+
+>>>>>>> parent of 64acbb3 (Add files via upload)
 ## Dependencies
 
 This project uses the following open-source packages:
@@ -291,5 +449,9 @@ See our [Contributing Guide](CONTRIBUTING.md) for details on making contribution
 
 - [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)
 - [Greasemonkey API](https://wiki.greasespot.net/Greasemonkey_Manual:API)
+<<<<<<< HEAD
 - [Model Context Protocol](https://modelcontextprotocol.ai)
 >>>>>>> parent of 8a57443 (Merge pull request #4 from robertheadley/feature/puppeteer-commands)
+=======
+- [Model Context Protocol](https://modelcontextprotocol.ai)
+>>>>>>> parent of 64acbb3 (Add files via upload)
