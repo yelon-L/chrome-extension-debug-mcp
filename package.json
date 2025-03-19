@@ -1,25 +1,46 @@
 {
-  "name": "chrome-debug-mcp",
+  "name": "chrome-debug-mcp-playwright",
   "version": "1.0.0",
-  "type": "module",
+  "description": "A Model Context Protocol (MCP) implementation for browser automation using Playwright",
   "main": "build/index.js",
+  "type": "module",
   "scripts": {
-    "build": "tsc",
     "start": "node build/index.js",
-    "dev": "tsc && node build/index.js"
+    "build": "tsc",
+    "clean": "rimraf build logs temp .mcp-cache",
+    "prestart": "mkdir -p logs temp .mcp-cache"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "Chrome debugger MCP server",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.1",
-    "chrome-remote-interface": "^0.33.0",
-    "puppeteer": "^22.8.2"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "playwright": "^1.42.1"
   },
   "devDependencies": {
-    "@types/chrome-remote-interface": "^0.31.14",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.4.2",
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "files": [
+    "build",
+    "README.md",
+    "COMMANDS.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mcp",
+    "playwright",
+    "automation",
+    "greasemonkey",
+    "browser"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/chrome-debug-mcp-playwright.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/chrome-debug-mcp-playwright/issues"
   }
 }
