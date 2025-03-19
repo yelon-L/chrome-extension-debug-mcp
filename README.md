@@ -1,14 +1,15 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 # Chrome Debug MCP Playwright
 
 A Model Context Protocol (MCP) implementation for browser automation using Playwright, with full Greasemonkey API support.
+<a href="https://glama.ai/mcp/servers/nguhnsghor">
+
+ 
+
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/nguhnsghor/badge" alt="Chrome Debug Server MCP server" />
+ 
+
+</a>
+ 
 
 ## Features
 
