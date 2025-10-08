@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 {
   "name": "chrome-debug-mcp",
   "version": "1.0.0",
@@ -14,10 +8,15 @@
     "start": "node build/index.js",
     "dev": "tsc && node build/index.js"
   },
-  "keywords": [],
+  "keywords": [
+    "mcp",
+    "chrome",
+    "puppeteer",
+    "debug"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "Chrome debugger MCP server",
+  "license": "MIT",
+  "description": "Chrome debug MCP server (Puppeteer + CDP)",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "chrome-remote-interface": "^0.33.0",
@@ -29,55 +28,3 @@
     "typescript": "^5.0.0"
   }
 }
-=======
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-{
-  "name": "chrome-debug-mcp",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "build/index.js",
-  "scripts": {
-    "build": "tsc",
-    "start": "node build/index.js",
-    "dev": "tsc && node build/index.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "Chrome debugger MCP server",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.1",
-    "chrome-remote-interface": "^0.33.0",
-    "puppeteer": "^22.8.2"
-  },
-  "devDependencies": {
-    "@types/chrome-remote-interface": "^0.31.14",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
-  }
-}
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)
-=======
->>>>>>> parent of 64acbb3 (Add files via upload)

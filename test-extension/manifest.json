@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "MCP Test Extension",
+  "version": "1.2.0",
+  "description": "用于验证 MCP 扩展调试能力：Content Script 注入、消息、日志、Service Worker",
+  "permissions": ["activeTab", "scripting", "tabs"],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "MCP Test"
+  }
+}
