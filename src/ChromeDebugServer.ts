@@ -232,17 +232,36 @@ export class ChromeDebugServer {
         },
         {
           name: 'get_extension_logs',
-          description: 'Get extension-related console logs with optional filtering',
+          description: 'Enhanced extension logs analysis with structured filtering, extension info, and professional reporting format',
           inputSchema: {
             type: 'object',
             properties: {
-              extensionId: { type: 'string' },
+              extensionId: { 
+                type: 'string',
+                description: 'Filter logs by specific extension ID'
+              },
               sourceTypes: {
                 type: 'array',
-                items: { type: 'string', enum: ['page','extension','service_worker','content_script'] }
+                items: { type: 'string', enum: ['background','content_script','popup','options','service_worker','page','extension'] },
+                description: 'Filter by log source types'
               },
-              since: { type: 'number' },
-              clear: { type: 'boolean' }
+              level: {
+                type: 'array',
+                items: { type: 'string', enum: ['error','warn','info','log','debug'] },
+                description: 'Filter by log levels'
+              },
+              since: { 
+                type: 'number',
+                description: 'Filter logs since timestamp (ms)'
+              },
+              tabId: {
+                type: 'string',
+                description: 'Filter content script logs by tab ID'
+              },
+              clear: { 
+                type: 'boolean',
+                description: 'Clear logs after retrieving'
+              }
             }
           }
         },
@@ -262,11 +281,23 @@ export class ChromeDebugServer {
         },
         {
           name: 'content_script_status',
-          description: 'Probe DOM to check if MVP content script UI is present',
+          description: 'Enhanced content script status analysis with comprehensive injection detection, conflict analysis, and performance monitoring',
           inputSchema: {
             type: 'object',
-            properties: { tabId: { type: 'string' } },
-            required: ['tabId']
+            properties: { 
+              tabId: { 
+                type: 'string',
+                description: 'Specific tab ID to analyze' 
+              },
+              extensionId: {
+                type: 'string',
+                description: 'Optional extension ID filter'
+              },
+              checkAllTabs: {
+                type: 'boolean',
+                description: 'Check content script status across all open tabs'
+              }
+            }
           }
         },
       ],

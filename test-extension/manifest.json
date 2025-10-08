@@ -1,18 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "MCP Test Extension",
-  "version": "1.2.0",
-  "description": "用于验证 MCP 扩展调试能力：Content Script 注入、消息、日志、Service Worker",
-  "permissions": ["activeTab", "scripting", "tabs"],
+  "name": "MCP Debug Test Extension",
+  "version": "2.0.0",
+  "description": "综合扩展调试功能验证：多级日志、注入检测、冲突分析、性能监控、存储测试",
+  "permissions": [
+    "activeTab", 
+    "scripting", 
+    "tabs", 
+    "storage",
+    "alarms",
+    "webRequest"
+  ],
   "host_permissions": [
     "<all_urls>"
   ],
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
+      "css": ["content.css"],
       "run_at": "document_start"
     }
   ],
@@ -20,6 +26,14 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "MCP Test"
-  }
+    "default_title": "MCP Debug Test",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

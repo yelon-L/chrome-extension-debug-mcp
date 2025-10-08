@@ -7,7 +7,7 @@ import * as puppeteer from 'puppeteer';
 import type { Client } from 'chrome-remote-interface';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { readFile } from 'fs/promises';
-import { LaunchChromeArgs, AttachArgs, ConsoleAPICalledEvent } from '../types/index.js';
+import { LaunchChromeArgs, AttachArgs, ConsoleAPICalledEvent, ExtensionLogEntry } from '../types/index.js';
 
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.error('[ChromeManager]', ...args);
@@ -16,7 +16,9 @@ export class ChromeManager {
   private browser: puppeteer.Browser | null = null;
   private cdpClient: Client | null = null;
   private consoleLogs: string[] = [];
+  private structuredLogs: ExtensionLogEntry[] = []; // 新增结构化日志存储
   private attachedSessions: Set<string> = new Set();
+  private targetInfo: Map<string, any> = new Map(); // 存储目标信息
 
   constructor() {}
 
@@ -32,8 +34,13 @@ export class ChromeManager {
     return [...this.consoleLogs];
   }
 
+  getStructuredLogs(): ExtensionLogEntry[] {
+    return [...this.structuredLogs];
+  }
+
   clearConsoleLogs(): void {
     this.consoleLogs = [];
+    this.structuredLogs = [];
   }
 
   /**
@@ -251,13 +258,16 @@ export class ChromeManager {
 
     // Enhanced console message handling with execution context awareness
     this.cdpClient.Runtime.consoleAPICalled((params: ConsoleAPICalledEvent) => {
-      const { type, args, executionContextId, stackTrace } = params;
+      const { type, args, executionContextId, stackTrace, timestamp } = params;
       
       // Get execution context info
       const context = executionContexts.get(executionContextId);
       let contextLabel = 'page';
+      let extensionId: string | undefined;
+      let url: string | undefined;
       
       if (context) {
+        url = context.origin;
         // Identify different execution context types
         if (context.auxData?.type === 'isolated') {
           contextLabel = 'content_script';
@@ -265,6 +275,9 @@ export class ChromeManager {
           contextLabel = 'content_script';
         } else if (context.origin.startsWith('chrome-extension://')) {
           contextLabel = 'extension';
+          // Extract extension ID from URL
+          const match = context.origin.match(/chrome-extension:\/\/([a-z]+)/);
+          if (match) extensionId = match[1];
         }
       }
 
@@ -273,11 +286,29 @@ export class ChromeManager {
         const frame = stackTrace.callFrames[0];
         if (frame.url.startsWith('chrome-extension://')) {
           contextLabel = 'content_script';
+          const match = frame.url.match(/chrome-extension:\/\/([a-z]+)/);
+          if (match) extensionId = match[1];
+          url = frame.url;
         }
       }
 
       const text = args.map((arg: { value?: any; description?: string }) => arg.value || arg.description).join(' ');
+      
+      // 保存原有格式的日志
       this.consoleLogs.push(`[${contextLabel}][${type}] ${text}`);
+      
+      // 保存结构化日志
+      const structuredLog: ExtensionLogEntry = {
+        timestamp: timestamp || Date.now(),
+        level: type,
+        message: text,
+        source: contextLabel,
+        extensionId,
+        url,
+        contextType: contextLabel
+      };
+      this.structuredLogs.push(structuredLog);
+      
       log(`Console [${contextLabel}/${executionContextId}]:`, type, text);
     });
   }
@@ -312,7 +343,30 @@ export class ChromeManager {
                 .map((arg: { value?: any; description?: string }) => arg.value ?? arg.description)
                 .join(' ');
               const type = (params as any).type || 'log';
+              const timestamp = params.timestamp || Date.now();
+              
+              // 保存原有格式的日志
               this.consoleLogs.push(`[${label}][${type}] ${text}`);
+              
+              // 保存结构化日志
+              const targetInfo = this.targetInfo.get(targetId);
+              let extensionId: string | undefined;
+              if (targetInfo?.url?.startsWith('chrome-extension://')) {
+                const match = targetInfo.url.match(/chrome-extension:\/\/([a-z]+)/);
+                if (match) extensionId = match[1];
+              }
+              
+              const structuredLog: ExtensionLogEntry = {
+                timestamp,
+                level: type,
+                message: text,
+                source: label,
+                extensionId,
+                url: targetInfo?.url,
+                contextType: label
+              };
+              this.structuredLogs.push(structuredLog);
+              
               log(`[${label}] console:`, type, text);
             }
           });
@@ -327,6 +381,10 @@ export class ChromeManager {
           const url: string = targetInfo.url || '';
           const type: string = targetInfo.type || '';
           const id: string = targetInfo.targetId;
+          
+          // 保存目标信息供日志使用
+          this.targetInfo.set(id, targetInfo);
+          
           // Attach to extension pages and service workers
           if (url.startsWith('chrome-extension://')) {
             await attachToTarget(id, 'extension');
@@ -345,6 +403,10 @@ export class ChromeManager {
       for (const info of targets.targetInfos || []) {
         const url: string = info.url || '';
         const type: string = info.type || '';
+        
+        // 保存目标信息供日志使用
+        this.targetInfo.set(info.targetId, info);
+        
         if (url.startsWith('chrome-extension://')) {
           await attachToTarget(info.targetId, 'extension');
         } else if (type === 'service_worker') {
@@ -376,7 +438,29 @@ export class ChromeManager {
           try {
             const type = msg.type();
             const text = msg.text();
+            const url = p.url();
+            
+            // 保存原有格式的日志
             this.consoleLogs.push(`[page][${type}] ${text}`);
+            
+            // 保存结构化日志
+            let extensionId: string | undefined;
+            if (url.startsWith('chrome-extension://')) {
+              const match = url.match(/chrome-extension:\/\/([a-z]+)/);
+              if (match) extensionId = match[1];
+            }
+            
+            const structuredLog: ExtensionLogEntry = {
+              timestamp: Date.now(),
+              level: type,
+              message: text,
+              source: 'page',
+              extensionId,
+              url,
+              contextType: 'page'
+            };
+            this.structuredLogs.push(structuredLog);
+            
             log('[page] console:', type, text);
           } catch {}
         });
@@ -396,7 +480,29 @@ export class ChromeManager {
             try {
               const type = msg.type();
               const text = msg.text();
+              const url = p.url();
+              
+              // 保存原有格式的日志
               this.consoleLogs.push(`[page][${type}] ${text}`);
+              
+              // 保存结构化日志
+              let extensionId: string | undefined;
+              if (url.startsWith('chrome-extension://')) {
+                const match = url.match(/chrome-extension:\/\/([a-z]+)/);
+                if (match) extensionId = match[1];
+              }
+              
+              const structuredLog: ExtensionLogEntry = {
+                timestamp: Date.now(),
+                level: type,
+                message: text,
+                source: 'page',
+                extensionId,
+                url,
+                contextType: 'page'
+              };
+              this.structuredLogs.push(structuredLog);
+              
               log('[page] console:', type, text);
             } catch {}
           });
@@ -501,6 +607,8 @@ export class ChromeManager {
     this.browser = null;
     this.cdpClient = null;
     this.consoleLogs = [];
+    this.structuredLogs = [];
     this.attachedSessions.clear();
+    this.targetInfo.clear();
   }
 }

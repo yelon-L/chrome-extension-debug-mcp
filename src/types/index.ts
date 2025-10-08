@@ -63,9 +63,33 @@ export interface ListExtensionsArgs {}
 
 export interface GetExtensionLogsArgs { 
   extensionId?: string; 
-  sourceTypes?: Array<'page'|'extension'|'service_worker'|'content_script'>; 
+  sourceTypes?: Array<'background'|'content_script'|'popup'|'options'|'service_worker'|'page'|'extension'>; 
+  level?: Array<'error'|'warn'|'info'|'log'|'debug'>;
   since?: number; 
+  tabId?: string; // 过滤特定tab的content script日志
   clear?: boolean; 
+}
+
+export interface ExtensionLogEntry {
+  timestamp: number;
+  level: string;
+  message: string;
+  source: string; // 'background' | 'content_script' | 'popup' | etc.
+  extensionId?: string;
+  tabId?: string; // 如果是content script
+  url?: string;   // 页面URL
+  contextType?: string; // 上下文类型
+}
+
+export interface ExtensionLogsResponse {
+  logs: ExtensionLogEntry[];
+  totalCount: number;
+  filteredCount: number;
+  extensionInfo?: {
+    id: string;
+    name: string;
+    version: string;
+  };
 }
 
 export interface ReloadExtensionArgs { 
@@ -80,7 +104,45 @@ export interface InjectContentScriptArgs {
 }
 
 export interface ContentScriptStatusArgs { 
-  tabId: string; 
+  tabId?: string;
+  extensionId?: string;
+  checkAllTabs?: boolean;
+}
+
+export interface ContentScriptInjectionStatus {
+  injected: boolean;
+  scriptCount: number;
+  cssCount: number;
+  errors: string[];
+  performance: {
+    injectionTime: number;
+    domReadyTime: number;
+  };
+}
+
+export interface ContentScriptDOMModifications {
+  elementsAdded: number;
+  elementsRemoved: number;
+  styleChanges: number;
+}
+
+export interface ContentScriptConflict {
+  type: 'css' | 'js' | 'dom';
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface ContentScriptStatusResult {
+  tabId: string;
+  url: string;
+  extensionId: string;
+  injectionStatus: ContentScriptInjectionStatus;
+  domModifications: ContentScriptDOMModifications;
+  conflicts: ContentScriptConflict[];
+}
+
+export interface ContentScriptStatusResponse {
+  results: ContentScriptStatusResult[];
 }
 
 export interface ClickArgs {
