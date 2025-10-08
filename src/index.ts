@@ -1318,6 +1318,32 @@ class ChromeDebugServer {
     }
 
     try {
+      // If tabId is specified, use Puppeteer page.evaluate for that specific tab
+      if (args.tabId) {
+        const page = this.tabIdToPage.get(args.tabId);
+        if (!page) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Unknown tabId: ${args.tabId}`
+          );
+        }
+        
+        const result = await page.evaluate((expr) => {
+          // Use indirect eval to execute in global scope
+          return (0, eval)(expr);
+        }, args.expression);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ type: typeof result, value: result }, null, 2),
+            },
+          ],
+        };
+      }
+      
+      // If no tabId specified, use CDP on current page (legacy behavior)
       const result = await this.cdpClient.Runtime.evaluate({
         expression: args.expression,
         returnByValue: true,
