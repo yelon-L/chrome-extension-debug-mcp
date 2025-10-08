@@ -13,6 +13,9 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 
+// Import remote transport
+import { RemoteTransport } from './transports/RemoteTransport.js';
+
 // Import modular components
 import { ChromeManager } from './managers/ChromeManager.js';
 import { PageManager } from './managers/PageManager.js';
@@ -32,6 +35,8 @@ import {
   NewTabArgs,
   SwitchTabArgs,
   CloseTabArgs,
+  TransportType,
+  RemoteMCPConfig,
 } from './types/index.js';
 
 const DEBUG = true;
@@ -45,6 +50,7 @@ const log = (...args: any[]) => DEBUG && console.error('[ChromeDebugServer]', ..
  */
 export class ChromeDebugServer {
   private server: Server;
+  private remoteTransport?: RemoteTransport;
   
   // Module instances
   private chromeManager: ChromeManager;
@@ -318,7 +324,7 @@ export class ChromeDebugServer {
   // ===== ORCHESTRATION METHODS =====
   // These methods only coordinate between modules, no business logic
 
-  private async handleLaunchChrome(args: LaunchChromeArgs) {
+  public async handleLaunchChrome(args: LaunchChromeArgs) {
     const statusMessage = await this.chromeManager.launchChrome(args);
     
     // Set up page manager with the new browser
@@ -332,7 +338,7 @@ export class ChromeDebugServer {
     };
   }
 
-  private async handleAttachToChrome(args: AttachArgs) {
+  public async handleAttachToChrome(args: AttachArgs) {
     const statusMessage = await this.chromeManager.attachToChrome(args);
     
     // Set up page manager with the attached browser
@@ -346,7 +352,7 @@ export class ChromeDebugServer {
     };
   }
 
-  private async handleGetConsoleLogs(args: GetConsoleLogsArgs) {
+  public async handleGetConsoleLogs(args: GetConsoleLogsArgs) {
     const logs = this.chromeManager.getConsoleLogs();
     if (args?.clear) {
       this.chromeManager.clearConsoleLogs();
@@ -356,65 +362,76 @@ export class ChromeDebugServer {
     };
   }
 
-  private async handleEvaluate(args: EvaluateArgs) {
+  public async handleEvaluate(args: EvaluateArgs) {
     return await this.evaluationHandler.evaluate(args);
   }
 
-  private async handleClick(args: ClickArgs) {
+  public async handleClick(args: ClickArgs) {
     return await this.interactionHandler.click(args);
   }
 
-  private async handleType(args: TypeArgs) {
+  public async handleType(args: TypeArgs) {
     return await this.interactionHandler.type(args);
   }
 
-  private async handleScreenshot(args: ScreenshotArgs) {
+  public async handleScreenshot(args: ScreenshotArgs) {
     return await this.interactionHandler.screenshot(args);
   }
 
-  private async handleListTabs() {
+  public async handleListTabs() {
     const tabs = await this.pageManager.listTabs();
     return { content: [{ type: 'text', text: JSON.stringify(tabs, null, 2) }] };
   }
 
-  private async handleNewTab(args: NewTabArgs) {
+  public async handleNewTab(args: NewTabArgs) {
     const result = await this.pageManager.createNewTab(args.url);
     return { content: [{ type: 'text', text: JSON.stringify(result) }] };
   }
 
-  private async handleSwitchTab(args: SwitchTabArgs) {
+  public async handleSwitchTab(args: SwitchTabArgs) {
     const result = await this.pageManager.switchToTab(args.tabId);
     return { content: [{ type: 'text', text: result.message }] };
   }
 
-  private async handleCloseTab(args: CloseTabArgs) {
+  public async handleCloseTab(args: CloseTabArgs) {
     await this.pageManager.closeTab(args.tabId);
     return { content: [{ type: 'text', text: `closed:${args.tabId}` }] };
   }
 
-  private async handleListExtensions(args: any) {
+  public async handleListExtensions(args: any) {
     return await this.extensionHandler.listExtensions(args);
   }
 
-  private async handleGetExtensionLogs(args: any) {
+  public async handleGetExtensionLogs(args: any) {
     return await this.extensionHandler.getExtensionLogs(args);
   }
 
-  private async handleInjectContentScript(args: any) {
+  public async handleInjectContentScript(args: any) {
     return await this.extensionHandler.injectContentScript(args);
   }
 
-  private async handleContentScriptStatus(args: any) {
+  public async handleContentScriptStatus(args: any) {
     return await this.extensionHandler.contentScriptStatus(args);
   }
 
   /**
-   * Starts the MCP server using stdio transport.
+   * Starts the MCP server with specified transport mode.
    */
-  async run() {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error('Chrome Debug MCP server (v2.0 - Modular) running on stdio');
+  async run(transportType: TransportType = 'stdio', config?: RemoteMCPConfig) {
+    log(`Starting MCP server with transport: ${transportType}`);
+    
+    if (transportType === 'stdio') {
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
+      console.error('Chrome Debug MCP server (v2.0 - Modular) running on stdio');
+    } else {
+      // Remote transport (SSE or HTTP)
+      this.remoteTransport = new RemoteTransport(this.server, config);
+      // Set reference to this server for actual tool execution
+      this.remoteTransport.setChromeDebugServer(this);
+      await this.remoteTransport.startHTTPServer();
+      console.error(`Chrome Debug MCP server (v2.0 - Modular) running with ${transportType} transport`);
+    }
   }
 
   /**
@@ -423,6 +440,11 @@ export class ChromeDebugServer {
   async cleanup() {
     await this.chromeManager.cleanup();
     await this.pageManager.cleanup();
+    
+    if (this.remoteTransport) {
+      await this.remoteTransport.stop();
+    }
+    
     await this.server.close();
   }
 }

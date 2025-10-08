@@ -6,8 +6,10 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/main.js",
+    "start:remote": "node build/remote.js",
     "start:legacy": "node build/index.js",
     "dev": "tsc && node build/main.js",
+    "dev:remote": "tsc && node build/remote.js",
     "dev:legacy": "tsc && node build/index.js"
   },
   "keywords": [
@@ -20,7 +22,7 @@
   "license": "MIT",
   "description": "Chrome debug MCP server (Puppeteer + CDP)",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.1",
+    "@modelcontextprotocol/sdk": "^1.19.1",
     "chrome-remote-interface": "^0.33.0",
     "puppeteer": "^22.8.2"
   },

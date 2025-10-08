@@ -121,3 +121,19 @@ export interface SwitchTabArgs {
 export interface CloseTabArgs {
   tabId: string;
 }
+
+// Remote MCP Transport Types
+export type TransportType = 'stdio' | 'sse' | 'http';
+
+export interface RemoteMCPConfig {
+  port?: number;
+  host?: string;
+  cors?: {
+    origin?: string | string[];
+    credentials?: boolean;
+  };
+  rateLimit?: {
+    windowMs?: number;
+    max?: number;
+  };
+}

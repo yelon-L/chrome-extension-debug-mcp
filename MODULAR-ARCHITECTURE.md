@@ -1,8 +1,8 @@
 # Chrome Debug MCP - 模块化架构说明
 
-**版本**: v2.0.1 (Modular + P0 Fix)  
-**架构类型**: 分层模块化设计  
-**状态**: ✅ 生产就绪
+**版本**: v2.1.0 (Modular + Remote Transport)  
+**架构类型**: 分层模块化设计 + 多传输支持  
+**状态**: ✅ 生产就绪 + 🌐 远程连接支持
 
 ---
 
@@ -11,16 +11,19 @@
 ```
 chrome-debug-mcp/
 ├── src/
-│   ├── main.ts                      # 入口点（模块化版本）
-│   ├── ChromeDebugServer.ts         # MCP服务器协调器
+│   ├── main.ts                      # 入口点（stdio传输）
+│   ├── remote.ts                    # 远程传输入口点 🌐 NEW
+│   ├── ChromeDebugServer.ts         # MCP服务器协调器（多传输支持）
 │   ├── managers/                    # 管理器层
 │   │   ├── ChromeManager.ts         # Chrome浏览器生命周期管理
-│   │   └── PageManager.ts           # 页面和标签页管理 ⭐ P0修复
+│   │   └── PageManager.ts           # 页面和标签页管理
 │   ├── handlers/                    # 处理器层
 │   │   ├── EvaluationHandler.ts     # JavaScript执行处理
 │   │   └── InteractionHandler.ts    # 用户交互处理（点击、输入等）
+│   ├── transports/                  # 传输层 🌐 NEW
+│   │   └── RemoteTransport.ts       # SSE + Streamable HTTP 支持
 │   ├── types/                       # 类型定义
-│   │   └── index.ts                 # 共享类型定义
+│   │   └── index.ts                 # 共享类型定义（包含远程配置）
 │   └── index.ts.legacy              # 旧版单文件实现（已存档）
 ├── build/                           # 编译输出
 │   ├── main.js                      # 编译后的入口点
@@ -621,8 +624,92 @@ async getActivePage(): Promise<puppeteer.Page> {
    - 代码简化提升性能
    - 内存占用减少
 
+---
+
+## 🌐 远程传输支持 (v2.1.0 NEW)
+
+### 支持的传输协议
+
+1. **Stdio Transport** (本地连接)
+   ```bash
+   npm start              # stdio模式
+   ```
+
+2. **SSE (Server-Sent Events)** (远程连接)
+   ```bash
+   npm run start:remote   # HTTP + SSE支持
+   ```
+
+3. **Streamable HTTP** (远程连接 - 新标准)
+   ```bash
+   npm run start:remote   # 同时支持SSE和HTTP
+   ```
+
+### 配置选项
+
+```typescript
+interface RemoteMCPConfig {
+  port?: number;          // 端口 (默认: 3000)
+  host?: string;          // 主机 (默认: localhost)
+  cors?: {
+    origin?: string | string[];
+    credentials?: boolean;
+  };
+  rateLimit?: {
+    windowMs?: number;    // 时间窗口
+    max?: number;         // 最大请求数
+  };
+}
+```
+
+### API端点
+
+- **Health Check**: `GET /health`
+- **SSE连接**: `GET /sse`
+- **HTTP消息**: `POST /message`
+
+### 使用示例
+
+```bash
+# 启动远程MCP服务器
+npm run start:remote
+
+# 自定义配置
+node build/remote.js --port=8080 --host=0.0.0.0 --cors=*
+
+# 环境变量配置
+MCP_PORT=3000 MCP_HOST=localhost npm run start:remote
+```
+
+### 远程客户端连接
+
+```javascript
+// SSE连接示例
+const eventSource = new EventSource('http://localhost:3000/sse');
+eventSource.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  console.log('MCP响应:', response);
+};
+
+// HTTP连接示例
+const response = await fetch('http://localhost:3000/message', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/list',
+    params: {}
+  })
+});
+```
+
+---
+
 ### 下一步
 
+- [x] ✅ 添加远程传输支持 (SSE + Streamable HTTP)
+- [ ] OAuth授权支持
 - [ ] 添加单元测试
 - [ ] 完善错误处理
 - [ ] 性能监控
@@ -630,7 +717,7 @@ async getActivePage(): Promise<puppeteer.Page> {
 
 ---
 
-**版本**: v2.0.1  
+**版本**: v2.1.0  
 **架构**: 模块化 + P0修复  
 **状态**: ✅ 生产就绪  
 **最后更新**: 2025-10-08
