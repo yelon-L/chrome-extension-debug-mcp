@@ -30,13 +30,48 @@ export class ExtensionHandler {
 
     try {
       const { Target } = cdp as any;
+      log('Calling Target.getTargets()...');
       const targets = await Target.getTargets();
-      const items = (targets.targetInfos || []).filter((info: any) => {
-        return (info.url?.startsWith('chrome-extension://')) || (info.type === 'service_worker');
+      log('Raw targets response:', JSON.stringify(targets, null, 2));
+      
+      const allTargetInfos = targets.targetInfos || [];
+      log(`Found ${allTargetInfos.length} total targets`);
+      
+      // 详细记录每个目标
+      allTargetInfos.forEach((info: any, index: number) => {
+        log(`Target ${index + 1}:`, {
+          id: info.targetId,
+          type: info.type,
+          url: info.url || '(no url)',
+          title: info.title || '(no title)',
+          attached: info.attached
+        });
+      });
+      
+      // 应用扩展的过滤逻辑
+      const items = allTargetInfos.filter((info: any) => {
+        const isExtensionUrl = info.url?.startsWith('chrome-extension://');
+        const isServiceWorker = info.type === 'service_worker';
+        // 添加更多检测条件
+        const isExtensionWorker = info.type === 'worker' && info.url?.includes('chrome-extension://');
+        const isExtensionPage = info.type === 'page' && info.url?.startsWith('chrome-extension://');
+        const isExtensionBackground = info.type === 'background_page';
+        
+        const shouldInclude = isExtensionUrl || isServiceWorker || isExtensionWorker || isExtensionPage || isExtensionBackground;
+        
+        log(`Target ${info.targetId}: type=${info.type}, url=${info.url}, include=${shouldInclude} (ext=${isExtensionUrl}, sw=${isServiceWorker}, ew=${isExtensionWorker}, ep=${isExtensionPage}, bg=${isExtensionBackground})`);
+        
+        return shouldInclude;
       }).map((info: any) => ({ id: info.targetId, type: info.type, url: info.url || '' }));
+
+      log(`After filtering: ${items.length} extension targets found`);
+      items.forEach((item: any, index: number) => {
+        log(`Extension ${index + 1}:`, item);
+      });
 
       return { content: [{ type: 'text', text: JSON.stringify(items, null, 2) }] };
     } catch (e) {
+      log('Error in listExtensions:', e);
       throw new McpError(ErrorCode.InternalError, `Failed to list extensions: ${e}`);
     }
   }
