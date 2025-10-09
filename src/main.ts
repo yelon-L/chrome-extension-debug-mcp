@@ -18,6 +18,30 @@
  */
 
 import { ChromeDebugServer } from './ChromeDebugServer.js';
+import { parseArguments, logStartupMessage } from './utils/cli.js';
+import fs from 'fs';
+import path from 'path';
+
+// Read package.json for version
+function readPackageVersion(): string {
+  try {
+    const packagePath = path.join(process.cwd(), 'package.json');
+    if (fs.existsSync(packagePath)) {
+      const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+      return pkg.version || '2.1.0';
+    }
+  } catch (error) {
+    // Ignore errors, use default
+  }
+  return '2.1.0';
+}
+
+// Parse CLI arguments
+const version = readPackageVersion();
+const options = parseArguments(version);
+
+// Log startup message with configuration
+logStartupMessage(options, version);
 
 // Create and start server instance
 const server = new ChromeDebugServer();
@@ -48,9 +72,8 @@ process.on('unhandledRejection', async (reason, promise) => {
   process.exit(1);
 });
 
-// Start the server
-console.error('[Main] Starting Chrome Debug MCP Server v2.0 (Modular Architecture)...');
-server.run().catch(async (error) => {
+// Start the server with CLI options
+server.run(options.transport, options.port ? { port: options.port } : undefined).catch(async (error) => {
   console.error('[Main] Failed to start server:', error);
   await server.cleanup();
   process.exit(1);

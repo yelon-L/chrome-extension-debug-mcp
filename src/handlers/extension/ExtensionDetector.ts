@@ -32,7 +32,7 @@ export class ExtensionDetector {
       log(`Found ${allTargets.length} total targets`);
 
       // 过滤扩展相关的targets
-      const extensionTargets = allTargets.filter(target => {
+      const extensionTargets = allTargets.filter((target: any) => {
         // Service Worker (MV3 扩展)
         if (target.type === 'service_worker' && target.url?.startsWith('chrome-extension://')) {
           return true;
@@ -57,7 +57,7 @@ export class ExtensionDetector {
       const extensionIds = new Set<string>();
       const extensions: any[] = [];
 
-      extensionTargets.forEach(target => {
+      extensionTargets.forEach((target: any) => {
         if (target.url) {
           const match = target.url.match(/chrome-extension:\/\/([a-z]{32})/);
           if (match) {

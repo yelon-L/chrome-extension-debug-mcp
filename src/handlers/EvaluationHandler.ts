@@ -56,7 +56,7 @@ export class EvaluationHandler {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ type: typeof result, value: result }, null, 2),
+              text: JSON.stringify({ type: typeof result, value: result }),
             },
           ],
         };

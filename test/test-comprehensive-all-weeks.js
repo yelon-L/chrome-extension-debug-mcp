@@ -197,10 +197,13 @@ class ComprehensiveTestSuite {
         const extensions = await this.server.handleListExtensions({});
         const extData = JSON.parse(extensions.content[0].text);
         
-        if (extData.extensions && extData.extensions.length > 0) {
-          const extensionId = extData.extensions[0].id;
+        // 修复：extData直接就是数组
+        if (extData && extData.length > 0) {
+          const extensionId = extData[0].id;
+          const extensionTitle = extData[0].title || extensionId;
           
-          console.log(`   🎯 监控扩展: ${extensionId}`);
+          console.log(`   🎯 监控扩展: ${extensionTitle}`);
+          console.log(`   🆔 扩展ID: ${extensionId}`);
           console.log(`   ⏱️ 监控时长: 5秒`);
           
           const result = await this.server.handleMonitorExtensionMessages({
@@ -211,7 +214,8 @@ class ComprehensiveTestSuite {
           });
           
           const monitoring = JSON.parse(result.content[0].text);
-          console.log(`   📊 状态: ${monitoring.status || monitoring.message}`);
+          console.log(`   📊 监控状态: ${monitoring.status || monitoring.message}`);
+          console.log(`   📡 监控的目标数: ${monitoring.targets?.length || 0}`);
           
           // 等待监控完成
           await new Promise(resolve => setTimeout(resolve, 6000));
@@ -233,8 +237,10 @@ class ComprehensiveTestSuite {
         const extensions = await this.server.handleListExtensions({});
         const extData = JSON.parse(extensions.content[0].text);
         
-        if (extData.extensions && extData.extensions.length > 0) {
-          const extensionId = extData.extensions[0].id;
+        // 修复：extData直接就是数组
+        if (extData && extData.length > 0) {
+          const extensionId = extData[0].id;
+          const extensionTitle = extData[0].title || extensionId;
           
           console.log(`   🎯 追踪扩展: ${extensionId}`);
           console.log(`   📋 API类别: storage, tabs, runtime`);

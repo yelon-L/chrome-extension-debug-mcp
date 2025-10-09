@@ -39,6 +39,9 @@ import {
   RemoteMCPConfig,
 } from './types/index.js';
 
+// Import utilities
+import { Mutex } from './utils/Mutex.js';
+
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.error('[ChromeDebugServer]', ...args);
 
@@ -51,6 +54,9 @@ const log = (...args: any[]) => DEBUG && console.error('[ChromeDebugServer]', ..
 export class ChromeDebugServer {
   private server: Server;
   private remoteTransport?: RemoteTransport;
+  
+  // Tool execution mutex to prevent concurrent access conflicts
+  private toolMutex: Mutex;
   
   // Module instances
   private chromeManager: ChromeManager;
@@ -73,6 +79,9 @@ export class ChromeDebugServer {
       }
     );
 
+    // Initialize tool mutex for concurrent access protection
+    this.toolMutex = new Mutex();
+    
     // Initialize modules
     this.chromeManager = new ChromeManager();
     this.pageManager = new PageManager();
@@ -515,11 +524,17 @@ export class ChromeDebugServer {
       ],
     }));
 
-    // Handler for executing tools - this is pure routing
+    // Handler for executing tools - this is pure routing with mutex protection
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const args = request.params.arguments || {};
       
+      // Acquire mutex to prevent concurrent tool execution
+      const guard = await this.toolMutex.acquire();
+      const startTime = Date.now();
+      
       try {
+        log(`🔒 [Mutex] Tool '${request.params.name}' acquired lock`);
+        
         switch (request.params.name) {
           case 'launch_chrome':
             return await this.handleLaunchChrome(args as LaunchChromeArgs);
@@ -572,8 +587,12 @@ export class ChromeDebugServer {
             );
         }
       } catch (error) {
-        log(`Error handling ${request.params.name}:`, error);
+        log(`❌ [Mutex] Tool '${request.params.name}' failed:`, error);
         throw error;
+      } finally {
+        const duration = Date.now() - startTime;
+        log(`🔓 [Mutex] Tool '${request.params.name}' released lock (${duration}ms)`);
+        guard.dispose();
       }
     });
   }
@@ -637,7 +656,7 @@ export class ChromeDebugServer {
 
   public async handleListTabs() {
     const tabs = await this.pageManager.listTabs();
-    return { content: [{ type: 'text', text: JSON.stringify(tabs, null, 2) }] };
+    return { content: [{ type: 'text', text: JSON.stringify(tabs) }] };
   }
 
   public async handleNewTab(args: NewTabArgs) {
@@ -658,49 +677,49 @@ export class ChromeDebugServer {
   public async handleListExtensions(args: any) {
     const result = await this.extensionHandler.listExtensions(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleGetExtensionLogs(args: any) {
     const result = await this.extensionHandler.getExtensionLogs(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleInjectContentScript(args: any) {
     const result = await this.extensionHandler.injectContentScript(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleContentScriptStatus(args: any) {
     const result = await this.extensionHandler.contentScriptStatus(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleListExtensionContexts(args: any) {
     const result = await this.extensionHandler.listExtensionContexts(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleSwitchExtensionContext(args: any) {
     const result = await this.extensionHandler.switchExtensionContext(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleInspectExtensionStorage(args: any) {
     const result = await this.extensionHandler.inspectExtensionStorage(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
@@ -709,21 +728,21 @@ export class ChromeDebugServer {
   public async handleMonitorExtensionMessages(args: any) {
     const result = await this.extensionHandler.monitorExtensionMessages(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleTrackExtensionAPICalls(args: any) {
     const result = await this.extensionHandler.trackExtensionAPICalls(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
   public async handleTestExtensionOnMultiplePages(args: any) {
     const result = await this.extensionHandler.testExtensionOnMultiplePages(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 
@@ -732,7 +751,7 @@ export class ChromeDebugServer {
   public async handleAnalyzeExtensionPerformance(args: any) {
     const result = await this.extensionHandler.analyzeExtensionPerformance(args);
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      content: [{ type: 'text', text: JSON.stringify(result) }]
     };
   }
 

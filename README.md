@@ -1,32 +1,43 @@
 # Chrome Extension Debug MCP
 
-🚀 **Professional Chrome extension debugging toolkit built on the Model Context Protocol (MCP)**
+🚀 **Enterprise-grade Chrome extension debugging toolkit built on the Model Context Protocol (MCP)**
 
-**Version**: v4.0.0 (Complete Extension Debugging Suite)  
-**Status**: ✅ Production Ready - Week 1-4 Full Implementation
+**Version**: v2.1.0 (Enhanced Architecture Edition)  
+**Status**: ✅ Production Ready - Borrowed Chrome DevTools MCP Excellence
 
-A specialized MCP server providing comprehensive Chrome extension debugging capabilities with **21 professional tools**, **modular architecture**, and **dual transport support** (stdio + HTTP/SSE). Designed for extension developers, QA teams, and enterprises seeking production-grade debugging solutions.
+A specialized MCP server providing comprehensive Chrome extension debugging capabilities with **24 professional tools** (including 3 new Phase 1 performance analysis tools), **modular architecture**, and **dual transport support** (stdio + HTTP/SSE). Designed for extension developers, QA teams, and enterprises seeking production-grade debugging solutions.
 
 ## ✨ Key Features
 
-### 🔧 **Extension Debugging Lifecycle**
 - **Complete debugging workflow**: Load → Inject → Monitor → Reload → Diagnose
 - **MV3 extension support**: Service Workers, chrome.scripting API, permissions management
 - **Real-time log aggregation**: Automatic collection and classification of extension logs
 - **Multi-context debugging**: Pages, extensions, service workers, content scripts
 
-### 🏆 **Modular Architecture Features**
+### 🏗️ **Enhanced Architecture Features** (Chrome DevTools MCP inspired)
 
-#### 🎯 **7 Specialized Extension Debugging Modules**
+#### 🔒 **Enterprise-Grade Stability**
+- **Mutex Protection**: FIFO queue prevents tool execution conflicts
+- **10-Second Timeout**: Fast-fail protocol for reliable connections  
+- **Target Filtering**: Automatically filters Chrome internal pages
+- **Auto-Reconnect**: Intelligent retry with exponential backoff
+
+#### ⚙️ **Advanced CLI Support** (16 Options)
+- **Browser Management**: `--browserUrl`, `--executablePath`, `--channel` (stable/canary/beta/dev)
+- **Runtime Options**: `--headless`, `--isolated`, `--viewport WIDTHxHEIGHT`
+- **Transport Control**: `--transport stdio|http`, `--port NUMBER`
+- **Debug Features**: `--logFile PATH`, `--proxyServer URL`, `--acceptInsecureCerts`
+
+#### 🎯 **Specialized Extension Modules**
 - **`ExtensionDetector`** - Chrome extension discovery and metadata collection
 - **`ExtensionLogger`** - Multi-level log aggregation (DEBUG/INFO/WARN/ERROR)
 - **`ExtensionContentScript`** - Dynamic injection, DOM analysis, conflict detection
 - **`ExtensionContextManager`** - Multi-context management (Background/Popup/Content)
 - **`ExtensionStorageManager`** - Storage inspection with permission checking
-- **`ExtensionMessageTracker`** - Real-time message passing monitoring (Week 3)
-- **`ExtensionTestHandler`** - Batch compatibility testing (Week 4)
+- **`ExtensionMessageTracker`** - Real-time message passing monitoring
+- **`ExtensionTestHandler`** - Batch compatibility testing
 
-#### 🔧 **21 Professional MCP Tools**
+#### 🔧 **24 Professional MCP Tools**
 
 **🔹 Basic Browser Operations (11 tools)**
 - `attach_to_chrome` - Connect to Chrome debugging instance
@@ -36,7 +47,7 @@ A specialized MCP server providing comprehensive Chrome extension debugging capa
 - `evaluate` - JavaScript execution with tab targeting
 - `get_console_logs` - Browser console log collection
 
-**🔹 Extension Debugging Specialized (10 tools)**
+**🔹 Extension Debugging Specialized (13 tools)**
 
 *Week 1: Enhanced Logging & Status (2 enhanced)*
 - `list_extensions` - Extension discovery and metadata
@@ -56,19 +67,74 @@ A specialized MCP server providing comprehensive Chrome extension debugging capa
 - `test_extension_on_multiple_pages` 🆕 - Batch compatibility testing
 - `inject_content_script` - Dynamic script injection with verification
 
-### 🌐 **Dual Transport Support** (Technical Leadership)
+*Phase 1: Performance Analysis (3 new) ⭐ **Latest***
+- `analyze_extension_performance` 🆕 - Chrome Tracing API集成，性能影响分析
+- `track_extension_network` 🆕 - 网络请求监控，数据传输分析  
+- `measure_extension_impact` 🆕 - 综合影响量化，多页面批量测试
 
-#### **1. stdio Transport (IDE Integration)**
+### 🌐 **Dual Transport Support** (Borrowed from Chrome DevTools MCP)
+
+Chrome Debug MCP 支持两种传输方式，满足不同使用场景：
+
+#### **1. stdio Transport (IDE直接集成)**
+**适用场景**: Claude Desktop, VSCode/Cursor/Windsurf Cline插件
+**优势**: 零配置，直接集成，最高性能，Mutex保护
+**启动方式**:
 ```bash
-# Direct stdio mode for MCP clients
+# 增强型stdio模式 (带CLI参数支持)
 node build/main.js
+
+# 使用CLI参数
+node build/main.js --browserUrl http://localhost:9222 --headless --isolated
+```
+**配置示例**:
+```json
+{
+  "mcpServers": {
+    "ext-debug": {
+      "command": "node",
+      "args": ["/path/to/chrome-debug-mcp/build/main.js"]
+    }
+  }
+}
 ```
 
-#### **2. HTTP/SSE Transport (Remote Access)**
+#### **2. HTTP/SSE Transport (远程访问)**
+**适用场景**: 跨网络调试，团队协作，CI/CD集成
+**优势**: 远程访问，实时更新，跨平台兼容，Mutex保护
+**启动方式**:
 ```bash
-# Remote HTTP server with real-time updates
+# HTTP服务器模式 (带CLI参数支持)
+node build/main.js --transport http --port 31232
+
+# 传统remote.js模式
 node build/remote.js
-# Access via: http://localhost:3000
+
+# 自定义端口和配置
+node build/main.js --transport http --port 8080 --headless --viewport 1920x1080
+```
+**API访问**:
+```bash
+# 列出所有工具
+curl -X POST http://localhost:3000/message \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# 执行扩展性能分析
+curl -X POST http://localhost:3000/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "analyze_extension_performance",
+      "arguments": {
+        "extensionId": "abc123",
+        "testUrl": "https://example.com"
+      }
+    }
+  }'
 ```
 
 ---

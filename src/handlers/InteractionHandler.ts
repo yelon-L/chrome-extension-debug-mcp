@@ -107,16 +107,24 @@ export class InteractionHandler {
       page = await this.pageManager.getActivePage();
     }
     try {
+      // 等待页面基本元素加载完成，提高截图成功率
+      await page.waitForSelector('body', { timeout: 3000 }).catch(() => {
+        // 如果body都没有，继续尝试截图
+      });
+      
       let buffer: Buffer | undefined;
       if (args.selector) {
+        // 增加超时时间到10秒，确保元素加载完成
         const el = await page.waitForSelector(args.selector, { timeout: 10000, visible: true });
         if (!el) throw new Error('Element not found');
         buffer = await el.screenshot({ encoding: 'binary' }) as Buffer;
       } else {
+        // 优化截图参数，提高性能
         buffer = await page.screenshot({ 
           fullPage: !!args.fullPage, 
           clip: args.clip as any, 
-          encoding: 'binary' 
+          encoding: 'binary',
+          optimizeForSpeed: true  // 优化速度
         }) as Buffer;
       }
       

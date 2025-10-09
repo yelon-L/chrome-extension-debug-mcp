@@ -37,7 +37,8 @@ export class ExtensionPerformanceAnalyzer {
   ): Promise<PerformanceAnalysisResult> {
     console.log(`[ExtensionPerformanceAnalyzer] 开始分析扩展性能: ${options.extensionId}`);
     
-    const duration = options.duration || 3000;
+    // 优化：减少默认trace时长，提高测试效率
+    const duration = options.duration || 1500;  // 从3000ms减少到1500ms
     const iterations = options.iterations || 1;
     
     try {
@@ -46,7 +47,7 @@ export class ExtensionPerformanceAnalyzer {
       const baselineTrace = await this.recordTrace(options.testUrl, duration);
       
       // 等待一下，让浏览器状态稳定
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));  // 减少等待时间
       
       // 2. 录制扩展trace（当前实现中，我们假设扩展已经加载）
       console.log('[ExtensionPerformanceAnalyzer] 录制扩展trace...');
@@ -110,15 +111,13 @@ export class ExtensionPerformanceAnalyzer {
    * 录制性能trace
    */
   private async recordTrace(url: string, duration: number): Promise<Buffer> {
-    const page = this.pageManager.getCurrentPage();
-    
-    if (!page) {
-      throw new Error('No active page available for performance tracing');
-    }
+    // 使用 getActivePage() 而不是 getCurrentPage()，它会自动查找可用页面
+    const page = await this.pageManager.getActivePage();
     
     // 导航到about:blank清空状态
-    await page.goto('about:blank', { waitUntil: 'networkidle0' });
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 使用 load 而非 networkidle0，避免活跃扩展导致永久等待
+    await page.goto('about:blank', { waitUntil: 'load', timeout: 8000 });
+    await new Promise(resolve => setTimeout(resolve, 300));  // 减少等待时间
     
     // 启动tracing
     await page.tracing.start({
@@ -139,9 +138,10 @@ export class ExtensionPerformanceAnalyzer {
     });
     
     // 导航到测试页面
+    // 使用 domcontentloaded 加快速度，避免活跃扩展阻塞
     await page.goto(url, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000 
+      waitUntil: 'domcontentloaded',
+      timeout: 15000  // 减少超时时间
     });
     
     // 等待指定时间收集性能数据

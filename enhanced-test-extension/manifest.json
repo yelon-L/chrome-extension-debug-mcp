@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Enhanced MCP Debug Test Extension",
-  "version": "4.1.0",
-  "description": "Week 1-4 + Phase 1性能测试：日志增强、上下文管理、消息监控、API追踪、批量测试、性能影响模拟",
+  "version": "2.1.0",
+  "description": "Enhanced MCP Debug Test Extension v2.1.0 - Compatible with Chrome Debug MCP架构优化版：Mutex保护、10秒超时、CLI参数、统一上下文管理",
   "permissions": [
     "activeTab", 
     "scripting", 

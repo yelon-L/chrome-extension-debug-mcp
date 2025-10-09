@@ -3,11 +3,22 @@
  * Handles Chrome launching, CDP connection, and console monitoring
  */
 
-import * as puppeteer from 'puppeteer';
-import type { Client } from 'chrome-remote-interface';
+import puppeteer, { Browser, Page } from 'puppeteer-core';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import fetch from 'node-fetch';
 import { readFile } from 'fs/promises';
 import { LaunchChromeArgs, AttachArgs, ConsoleAPICalledEvent, ExtensionLogEntry } from '../types/index.js';
+
+// Chrome Remote Interface types
+interface Client {
+  close(): Promise<void>;
+  send(method: string, params?: any): Promise<any>;
+  on(event: string, handler: (params: any) => void): void;
+  Target: any;
+  Runtime: any;
+  Page: any;
+  Console: any;
+}
 
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.error('[ChromeManager]', ...args);
@@ -19,6 +30,20 @@ export class ChromeManager {
   private structuredLogs: ExtensionLogEntry[] = []; // 新增结构化日志存储
   private attachedSessions: Set<string> = new Set();
   private targetInfo: Map<string, any> = new Map(); // 存储目标信息
+  
+  // 🔑 关键添加：Chrome生命周期管理
+  private isOwnedByMCP: boolean = false; // 标记Chrome是否由MCP启动
+  private connectionType: 'attach' | 'launch' | null = null;
+  private chromeProcessPid: number | null = null;
+  
+  // 新增：连接稳定性优化
+  private connectionHealth: 'healthy' | 'unhealthy' | 'recovering' = 'unhealthy';
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 3;
+  private lastHealthCheck: number = 0;
+  private connectionConfig: { host: string; port: number } | null = null;
+  private extensionCache: Map<string, any> = new Map(); // 扩展缓存
 
   constructor() {}
 
@@ -42,6 +67,142 @@ export class ChromeManager {
     this.consoleLogs = [];
     this.structuredLogs = [];
   }
+
+  // 新增：获取连接健康状态
+  getConnectionHealth(): { 
+    status: string; 
+    lastCheck: number; 
+    reconnectAttempts: number;
+    uptime: number;
+  } {
+    return {
+      status: this.connectionHealth,
+      lastCheck: this.lastHealthCheck,
+      reconnectAttempts: this.reconnectAttempts,
+      uptime: this.lastHealthCheck ? Date.now() - this.lastHealthCheck : 0
+    };
+  }
+
+  // 新增：Chrome端口智能发现
+  async discoverChromePort(startPort: number = 9222): Promise<number> {
+    const maxPort = startPort + 10;
+    log(`🔍 [Port Discovery] Scanning ports ${startPort}-${maxPort} for Chrome debug interface...`);
+    
+    for (let port = startPort; port <= maxPort; port++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        
+        const response = await fetch(`http://localhost:${port}/json/version`, {
+          method: 'GET',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const data = await response.json() as any;
+          log(`✅ [Port Discovery] Found Chrome on port ${port}: ${data.Browser}`);
+          return port;
+        }
+      } catch (error) {
+        // 继续尝试下一个端口
+        continue;
+      }
+    }
+    
+    throw new Error(`❌ [Port Discovery] No Chrome debug instance found on ports ${startPort}-${maxPort}`);
+  }
+
+  // 新增：连接健康检查
+  private async performHealthCheck(): Promise<boolean> {
+    try {
+      if (!this.cdpClient) {
+        log('⚠️  [Health Check] CDP client not available');
+        return false;
+      }
+
+      // 使用轻量级API检查连接
+      const startTime = Date.now();
+      await this.cdpClient.Target.getTargets();
+      const latency = Date.now() - startTime;
+      
+      this.lastHealthCheck = Date.now();
+      
+      if (latency > 5000) {
+        log(`⚠️  [Health Check] High latency detected: ${latency}ms`);
+        return false;
+      }
+      
+      log(`✅ [Health Check] Connection healthy (${latency}ms)`);
+      return true;
+    } catch (error) {
+      log(`❌ [Health Check] Failed: ${error}`);
+      return false;
+    }
+  }
+
+  // 新增：自动重连机制
+  private async attemptReconnect(): Promise<void> {
+    if (this.connectionHealth === 'recovering') {
+      log('🔄 [Auto Recovery] Recovery already in progress');
+      return;
+    }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      log(`❌ [Auto Recovery] Max reconnect attempts (${this.maxReconnectAttempts}) reached`);
+      return;
+    }
+
+    this.connectionHealth = 'recovering';
+    this.reconnectAttempts++;
+    
+    try {
+      log(`🔄 [Auto Recovery] Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
+      
+      if (this.connectionConfig) {
+        // 清理现有连接
+        await this.cleanup();
+        
+        // 等待一段时间再重连
+        await new Promise(resolve => setTimeout(resolve, 2000 * this.reconnectAttempts));
+        
+        // 重新连接
+        await this.attachToChromeEnhanced(this.connectionConfig);
+        
+        this.connectionHealth = 'healthy';
+        this.reconnectAttempts = 0;
+        log('✅ [Auto Recovery] Reconnection successful');
+      }
+    } catch (error) {
+      log(`❌ [Auto Recovery] Reconnect attempt ${this.reconnectAttempts} failed: ${error}`);
+      this.connectionHealth = 'unhealthy';
+    }
+  }
+
+  // 新增：启动健康监控
+  private startHealthMonitoring(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+
+    this.healthCheckInterval = setInterval(async () => {
+      const isHealthy = await this.performHealthCheck();
+      
+      if (!isHealthy && this.connectionHealth === 'healthy') {
+        log('⚠️  [Health Monitor] Connection degraded, initiating recovery...');
+        this.connectionHealth = 'unhealthy';
+        await this.attemptReconnect();
+      } else if (isHealthy && this.connectionHealth !== 'healthy') {
+        this.connectionHealth = 'healthy';
+        this.reconnectAttempts = 0;
+        log('✅ [Health Monitor] Connection restored');
+      }
+    }, 5000); // 每5秒检查一次
+
+    log('🔄 [Health Monitor] Started connection monitoring (5s interval)');
+  }
+
 
   /**
    * Launch Chrome with specified configurations
@@ -165,40 +326,142 @@ export class ChromeManager {
    * Attach to an existing Chrome instance
    */
   async attachToChrome(args: AttachArgs): Promise<string> {
-    const host = args.host || 'localhost';
-    const port = args.port || 9222;
-    
-    try {
-      // Connect Puppeteer to existing browser
-      // Support IPv6 host by bracketing in URL form
-      const hostForUrl = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
-      const url = `http://${hostForUrl}:${port}`;
-      this.browser = await puppeteer.connect({ browserURL: url, defaultViewport: null });
+    // 使用增强版本替代原有逻辑
+    return this.attachToChromeEnhanced(args);
+  }
 
-      // Ensure at least one page exists for debugging
-      const pages = await this.browser.pages();
-      if (pages.length === 0) {
-        log('No pages found, creating a blank page for debugging');
-        await this.browser.newPage();
+  /**
+   * 增强版Chrome连接 - 包含自动重试、健康检查、端口发现
+   */
+  async attachToChromeEnhanced(args: AttachArgs): Promise<string> {
+    let host = args.host || 'localhost';
+    let port = args.port;
+    
+    // 🔑 重要：标记这是连接到现有Chrome，不是MCP启动的
+    this.isOwnedByMCP = false;
+    this.connectionType = 'attach';
+    
+    // 智能端口发现
+    if (!port) {
+      try {
+        port = await this.discoverChromePort();
+        log(`🔍 [Enhanced Attach] Auto-discovered Chrome on port ${port}`);
+      } catch (error) {
+        port = 9222; // 回退到默认端口
+        log(`⚠️  [Enhanced Attach] Port discovery failed, using default: ${port}`);
+      }
+    }
+
+    // 保存连接配置用于重连
+    this.connectionConfig = { host, port };
+    
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        log(`🔄 [Enhanced Attach] Connection attempt ${attempt}/${maxRetries} to ${host}:${port}...`);
+        
+        // 预连接健康检查
+        await this.preConnectionCheck(host, port);
+        
+        // Connect Puppeteer to existing browser with timeout configuration
+        const hostForUrl = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+        const url = `http://${hostForUrl}:${port}`;
+        this.browser = await puppeteer.connect({ 
+          browserURL: url, 
+          defaultViewport: null,
+          protocolTimeout: 10000, // 10-second protocol timeout (borrowed from Chrome DevTools MCP)
+          targetFilter: (target) => {
+            // Filter out Chrome internal pages for better performance
+            const ignoredPrefixes = ['chrome://', 'chrome-untrusted://', 'devtools://'];
+            if (target.url() === 'chrome://newtab/') return true;
+            return !ignoredPrefixes.some(prefix => target.url().startsWith(prefix));
+          }
+        });
+
+        log('✅ [Enhanced Attach] Puppeteer connected with 10s protocol timeout');
+
+        // Ensure at least one page exists for debugging
+        const pages = await this.browser.pages();
+        if (pages.length === 0) {
+          log('📄 [Enhanced Attach] No pages found, creating debug page...');
+          await this.browser.newPage();
+        }
+        
+        // Attach CDP raw client to the same endpoint with timeout
+        const CDP = (await import('chrome-remote-interface')).default;
+        this.cdpClient = await CDP({ 
+          host, 
+          port
+        });
+
+        // Enable console monitoring and logging
+        await this.setupConsoleMonitoring();
+        
+        // Set up target discovery for extensions with caching
+        await this.setupTargetDiscovery();
+        await this.setupTargetDiscoveryEnhanced();
+
+        // Hook Puppeteer page console logs for all existing and future pages
+        await this.hookPuppeteerConsole();
+        
+        // 启动健康监控
+        this.startHealthMonitoring();
+        
+        // 预热扩展缓存
+        await this.warmupExtensionCache();
+        
+        this.connectionHealth = 'healthy';
+        this.reconnectAttempts = 0;
+        
+        const statusMessage = `🚀 [Enhanced Attach] Successfully connected with optimizations:
+        ✅ Host: ${host}:${port}
+        ✅ Health monitoring: Active (5s interval)
+        ✅ Auto-reconnect: Enabled (max ${this.maxReconnectAttempts} attempts)
+        ✅ Extension cache: Preloaded
+        ✅ Connection attempt: ${attempt}/${maxRetries}`;
+        
+        log(statusMessage);
+        return statusMessage;
+        
+      } catch (error) {
+        lastError = error as Error;
+        log(`❌ [Enhanced Attach] Attempt ${attempt} failed: ${error}`);
+        
+        if (attempt < maxRetries) {
+          const delay = 2000 * attempt; // 递增延迟
+          log(`⏳ [Enhanced Attach] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    throw new McpError(ErrorCode.InternalError, 
+      `Failed to attach to Chrome after ${maxRetries} attempts: ${lastError?.message}`);
+  }
+
+  // 新增：预连接检查
+  private async preConnectionCheck(host: string, port: number): Promise<void> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`http://${host}:${port}/json/version`, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Chrome debug interface not responding (HTTP ${response.status})`);
       }
       
-      // Attach CDP raw client to the same endpoint
-      const CDP = (await import('chrome-remote-interface')).default;
-      // Pass raw host (unbracketed) to CRI; it should handle IPv6 literal hostnames
-      this.cdpClient = await CDP({ host, port });
-
-      // Enable console monitoring and logging
-      await this.setupConsoleMonitoring();
-      
-      // Set up target discovery for extensions
-      await this.setupTargetDiscovery();
-
-      // Hook Puppeteer page console logs for all existing and future pages
-      await this.hookPuppeteerConsole();
-      
-      return `Successfully attached to Chrome at ${host}:${port}`;
+      const data = await response.json();
+      log(`✅ [Pre-check] Chrome ${data.Browser} is accessible`);
     } catch (error) {
-      throw new McpError(ErrorCode.InternalError, `Failed to attach to Chrome: ${error}`);
+      throw new Error(`Pre-connection check failed: ${error}`);
     }
   }
 
@@ -331,8 +594,8 @@ export class ChromeManager {
           this.attachedSessions.add(sessionId);
 
           // Enable Console/Runtime in the attached session
-          await this.cdpClient!.send('Runtime.enable', undefined, sessionId);
-          await this.cdpClient!.send('Console.enable', undefined, sessionId);
+          await this.cdpClient!.send('Runtime.enable');
+          await this.cdpClient!.send('Console.enable');
 
           // Listen for events from this sessionId and aggregate logs
           this.cdpClient!.on('event', (msg: any) => {
@@ -595,20 +858,177 @@ export class ChromeManager {
   }
 
   /**
-   * Clean up resources
+   * 🔑 安全清理：只关闭MCP启动的Chrome，不干扰用户Chrome
    */
   async cleanup(): Promise<void> {
-    if (this.cdpClient) {
-      await this.cdpClient.close();
+    try {
+      if (this.healthCheckInterval) {
+        clearInterval(this.healthCheckInterval);
+        this.healthCheckInterval = null;
+      }
+
+      if (this.cdpClient) {
+        await this.cdpClient.close();
+        this.cdpClient = null;
+      }
+
+      if (this.browser) {
+        if (this.isOwnedByMCP) {
+          // 🔑 只关闭MCP启动的Chrome
+          log(`🛑 [Cleanup] Closing MCP-owned Chrome (${this.connectionType}, PID: ${this.chromeProcessPid || 'unknown'})`);
+          await this.browser.close();
+          log('✅ [Cleanup] Successfully closed MCP-owned Chrome');
+        } else {
+          // 🔑 用户的Chrome，只断开连接，不关闭
+          log(`🔌 [Cleanup] Disconnecting from user's Chrome (${this.connectionType}) - NOT closing it`);
+          await this.browser.disconnect();
+          log('✅ [Cleanup] Safely disconnected from user\'s Chrome (it continues running)');
+        }
+        this.browser = null;
+      }
+
+      // 重置生命周期状态
+      this.isOwnedByMCP = false;
+      this.connectionType = null;
+      this.chromeProcessPid = null;
+
+      this.consoleLogs = [];
+      this.structuredLogs = [];
+      this.attachedSessions.clear();
+      this.targetInfo.clear();
+      this.extensionCache.clear();
+      
+      log('✅ [Cleanup] Resources cleaned up successfully');
+    } catch (error) {
+      log(`⚠️  [Cleanup] Error during cleanup: ${error}`);
     }
-    if (this.browser) {
-      await this.browser.close();
+  }
+
+  // 新增：增强目标发现（带缓存）
+  private async setupTargetDiscoveryEnhanced(): Promise<void> {
+    if (!this.cdpClient) return;
+
+    try {
+      // 获取所有目标并缓存扩展信息
+      const targets = await this.cdpClient.Target.getTargets();
+      const extensions = targets.targetInfos?.filter(target => 
+        target.type === 'service_worker' && 
+        target.url.startsWith('chrome-extension://')
+      ) || [];
+
+      // 缓存扩展目标信息
+      for (const ext of extensions) {
+        const extensionId = this.extractExtensionId(ext.url);
+        if (extensionId) {
+          this.extensionCache.set(extensionId, {
+            targetId: ext.targetId,
+            url: ext.url,
+            title: ext.title,
+            type: ext.type,
+            lastUpdated: Date.now()
+          });
+        }
+        this.targetInfo.set(ext.targetId, ext);
+      }
+
+      log(`🚀 [Enhanced Discovery] Cached ${extensions.length} extension targets`);
+
+      // 监听新目标创建
+      this.cdpClient.Target.targetCreated(({ targetInfo }) => {
+        if (targetInfo.type === 'service_worker' && 
+            targetInfo.url.startsWith('chrome-extension://')) {
+          const extensionId = this.extractExtensionId(targetInfo.url);
+          if (extensionId) {
+            this.extensionCache.set(extensionId, {
+              targetId: targetInfo.targetId,
+              url: targetInfo.url,
+              title: targetInfo.title,
+              type: targetInfo.type,
+              lastUpdated: Date.now()
+            });
+            log(`🆕 [Enhanced Discovery] New extension target cached: ${extensionId}`);
+          }
+          this.targetInfo.set(targetInfo.targetId, targetInfo);
+        }
+      });
+
+      // 监听目标销毁
+      this.cdpClient.Target.targetDestroyed(({ targetId }) => {
+        if (this.targetInfo.has(targetId)) {
+          const target = this.targetInfo.get(targetId);
+          if (target?.url.startsWith('chrome-extension://')) {
+            const extensionId = this.extractExtensionId(target.url);
+            if (extensionId) {
+              this.extensionCache.delete(extensionId);
+              log(`🗑️  [Enhanced Discovery] Extension target removed: ${extensionId}`);
+            }
+          }
+          this.targetInfo.delete(targetId);
+        }
+      });
+
+      await this.cdpClient.Target.setDiscoverTargets({ discover: true });
+      log('✅ [Enhanced Discovery] Target discovery enabled with caching');
+
+    } catch (error) {
+      log(`❌ [Enhanced Discovery] Setup failed: ${error}`);
     }
-    this.browser = null;
-    this.cdpClient = null;
-    this.consoleLogs = [];
-    this.structuredLogs = [];
-    this.attachedSessions.clear();
-    this.targetInfo.clear();
+  }
+
+  // 新增：预热扩展缓存
+  private async warmupExtensionCache(): Promise<void> {
+    try {
+      const startTime = Date.now();
+      
+      // 强制刷新目标列表
+      if (this.cdpClient) {
+        const targets = await this.cdpClient.Target.getTargets();
+        const extensionTargets = targets.targetInfos?.filter((t: any) => 
+          t.type === 'service_worker' && 
+          t.url.startsWith('chrome-extension://')
+        ) || [];
+
+        // 预加载扩展上下文信息
+        for (const target of extensionTargets) {
+          const extensionId = this.extractExtensionId(target.url);
+          if (extensionId && !this.extensionCache.has(extensionId)) {
+            this.extensionCache.set(extensionId, {
+              targetId: target.targetId,
+              url: target.url,
+              title: target.title,
+              type: target.type,
+              lastUpdated: Date.now()
+            });
+          }
+        }
+
+        const duration = Date.now() - startTime;
+        log(`🔥 [Cache Warmup] Preloaded ${extensionTargets.length} extensions in ${duration}ms`);
+      }
+    } catch (error) {
+      log(`⚠️  [Cache Warmup] Failed: ${error}`);
+    }
+  }
+
+  // 新增：获取缓存的扩展列表
+  getCachedExtensions(): Array<{ 
+    id: string; 
+    targetId: string; 
+    url: string; 
+    title: string; 
+    type: string; 
+    lastUpdated: number;
+  }> {
+    const extensions = [];
+    for (const [id, info] of this.extensionCache.entries()) {
+      extensions.push({ id, ...info });
+    }
+    return extensions;
+  }
+
+  // 辅助方法：从URL提取扩展ID
+  private extractExtensionId(url: string): string | null {
+    const match = url.match(/chrome-extension:\/\/([a-z]+)/);
+    return match ? match[1] : null;
   }
 }

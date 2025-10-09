@@ -117,7 +117,7 @@ export class ExtensionStorageManager {
     const allTargets = result.targetInfos;
 
     // 查找有该扩展内容脚本的页面（限制检查数量，避免卡顿）
-    const pageTargets = allTargets.filter(target => target.type === 'page' && (target as any).tabId);
+    const pageTargets = allTargets.filter((target: any) => target.type === 'page' && target.tabId);
     const maxPagesToCheck = Math.min(pageTargets.length, 5); // 最多检查5个页面
     
     for (let i = 0; i < maxPagesToCheck; i++) {

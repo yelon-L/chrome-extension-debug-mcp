@@ -121,7 +121,8 @@ export class RemoteTransport {
           try {
             const message = JSON.parse(line);
             this.processMessage(message, (response) => {
-              res.write(`data: ${JSON.stringify(response)}\n\n`);
+              // 🔧 修复：SSE数据也使用紧凑JSON格式
+              res.write(`data: ${JSON.stringify(response, null, 0)}\n\n`);
             });
           } catch (error) {
             console.error('[RemoteTransport] SSE message parse error:', error);
@@ -161,7 +162,8 @@ export class RemoteTransport {
         
         this.processMessage(message, (response) => {
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(response));
+          // 🔧 修复：使用紧凑JSON格式，去除不必要的换行符
+          res.end(JSON.stringify(response, null, 0));
         });
       } catch (error) {
         console.error('[RemoteTransport] HTTP message parse error:', error);
