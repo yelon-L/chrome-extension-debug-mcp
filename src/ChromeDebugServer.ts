@@ -371,6 +371,113 @@ export class ChromeDebugServer {
             }
           }
         },
+        {
+          name: 'monitor_extension_messages',
+          description: 'Week 3: Monitor extension message passing in real-time, track runtime.sendMessage, tabs.sendMessage and message responses',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to monitor messages for'
+              },
+              duration: {
+                type: 'number',
+                description: 'Monitoring duration in milliseconds (default: 30000)'
+              },
+              messageTypes: {
+                type: 'array',
+                items: { type: 'string', enum: ['runtime', 'tabs', 'external'] },
+                description: 'Message types to monitor (default: [\"runtime\", \"tabs\"])'
+              },
+              includeResponses: {
+                type: 'boolean',
+                description: 'Include message responses in monitoring (default: true)'
+              }
+            },
+            required: ['extensionId']
+          }
+        },
+        {
+          name: 'track_extension_api_calls',
+          description: 'Week 3: Track Chrome extension API calls with performance monitoring, memory usage analysis, and error tracking',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to track API calls for'
+              },
+              apiCategories: {
+                type: 'array',
+                items: { type: 'string', enum: ['storage', 'tabs', 'runtime', 'permissions', 'webRequest', 'alarms'] },
+                description: 'API categories to track (default: [\"storage\", \"tabs\", \"runtime\"])'
+              },
+              duration: {
+                type: 'number',
+                description: 'Tracking duration in milliseconds (default: 30000)'
+              },
+              includeResults: {
+                type: 'boolean',
+                description: 'Include API call results in tracking (default: true)'
+              }
+            },
+            required: ['extensionId']
+          }
+        },
+        {
+          name: 'test_extension_on_multiple_pages',
+          description: 'Week 4: Batch test extension behavior across multiple pages with comprehensive analysis, performance monitoring and automated reporting',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to test across multiple pages'
+              },
+              testUrls: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Array of URLs to test the extension on'
+              },
+              testCases: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                    checkInjection: { type: 'boolean' },
+                    checkAPICalls: { type: 'boolean' },
+                    checkStorage: { type: 'boolean' },
+                    checkMessages: { type: 'boolean' },
+                    customScript: { type: 'string' },
+                    expectedResults: { type: 'object' }
+                  },
+                  required: ['name', 'description']
+                },
+                description: 'Custom test cases to execute on each page'
+              },
+              timeout: {
+                type: 'number',
+                description: 'Timeout for each page test in milliseconds (default: 30000)'
+              },
+              concurrency: {
+                type: 'number',
+                description: 'Number of concurrent page tests (default: 3)'
+              },
+              includePerformance: {
+                type: 'boolean',
+                description: 'Include performance analysis in results (default: true)'
+              },
+              generateReport: {
+                type: 'boolean',
+                description: 'Generate detailed test report (default: true)'
+              }
+            },
+            required: ['extensionId', 'testUrls']
+          }
+        },
       ],
     }));
 
@@ -416,6 +523,12 @@ export class ChromeDebugServer {
             return await this.handleSwitchExtensionContext(args as any);
           case 'inspect_extension_storage':
             return await this.handleInspectExtensionStorage(args as any);
+          case 'monitor_extension_messages':
+            return await this.handleMonitorExtensionMessages(args as any);
+          case 'track_extension_api_calls':
+            return await this.handleTrackExtensionAPICalls(args as any);
+          case 'test_extension_on_multiple_pages':
+            return await this.handleTestExtensionOnMultiplePages(args as any);
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -550,6 +663,29 @@ export class ChromeDebugServer {
 
   public async handleInspectExtensionStorage(args: any) {
     const result = await this.extensionHandler.inspectExtensionStorage(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  // ===== Week 3 高级调试功能处理器 =====
+
+  public async handleMonitorExtensionMessages(args: any) {
+    const result = await this.extensionHandler.monitorExtensionMessages(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleTrackExtensionAPICalls(args: any) {
+    const result = await this.extensionHandler.trackExtensionAPICalls(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleTestExtensionOnMultiplePages(args: any) {
+    const result = await this.extensionHandler.testExtensionOnMultiplePages(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };

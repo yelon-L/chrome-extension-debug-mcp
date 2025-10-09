@@ -31,5 +31,5 @@ coverage/
 .env.*.local
 
 # Test files
-test*
-working-test-extension
+# test*
+# working-test-extension

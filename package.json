@@ -1,6 +1,6 @@
 {
-  "name": "chrome-debug-mcp",
-  "version": "2.0.0",
+  "name": "chrome-extension-debug-mcp",
+  "version": "4.0.0",
   "type": "module",
   "main": "build/main.js",
   "scripts": {
@@ -15,18 +15,22 @@
   "keywords": [
     "mcp",
     "chrome",
+    "chrome-extension",
+    "extension-debug",
     "puppeteer",
+    "cdp",
     "debug"
   ],
   "author": "",
   "license": "MIT",
-  "description": "Chrome debug MCP server (Puppeteer + CDP)",
+  "description": "Chrome Extension Debug MCP Server - Professional debugging tools for Chrome extension development",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.19.1",
     "chrome-remote-interface": "^0.33.0",
     "puppeteer": "^22.8.2"
   },
   "devDependencies": {
+    "@types/chrome": "^0.1.22",
     "@types/chrome-remote-interface": "^0.31.14",
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"

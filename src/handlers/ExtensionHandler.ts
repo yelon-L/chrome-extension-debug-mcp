@@ -12,17 +12,27 @@ import { ExtensionLogger } from './extension/ExtensionLogger.js';
 import { ExtensionContentScript } from './extension/ExtensionContentScript.js';
 import { ExtensionContextManager } from './extension/ExtensionContextManager.js';
 import { ExtensionStorageManager } from './extension/ExtensionStorageManager.js';
+import { ExtensionMessageTracker } from './extension/ExtensionMessageTracker.js';
+import { ExtensionTestHandler } from './extension/ExtensionTestHandler.js';
 
 // 导入类型
 import {
-  ListExtensionsArgs,
   GetExtensionLogsArgs,
   InjectContentScriptArgs,
   ContentScriptStatusArgs,
   ListExtensionContextsArgs,
   SwitchExtensionContextArgs,
-  InspectExtensionStorageArgs
+  InspectExtensionStorageArgs,
+  ListExtensionsArgs
 } from '../types/index.js';
+import {
+  MonitorExtensionMessagesArgs,
+  TrackExtensionAPICallsArgs
+} from './extension/ExtensionMessageTracker.js';
+import {
+  TestExtensionOnMultiplePagesArgs,
+  ExtensionTestResult
+} from '../types/extension-test-types.js';
 
 /**
  * 扩展处理器 - 模块化架构的统一协调器
@@ -33,6 +43,8 @@ export class ExtensionHandler {
   private contentScript: ExtensionContentScript;
   private contextManager: ExtensionContextManager;
   private storageManager: ExtensionStorageManager;
+  private messageTracker: ExtensionMessageTracker; // Week 3 新增
+  private testHandler: ExtensionTestHandler; // Week 4 新增
 
   constructor(
     private chromeManager: ChromeManager,
@@ -44,6 +56,8 @@ export class ExtensionHandler {
     this.contentScript = new ExtensionContentScript(chromeManager, pageManager);
     this.contextManager = new ExtensionContextManager(chromeManager, pageManager, this.contentScript);
     this.storageManager = new ExtensionStorageManager(chromeManager, pageManager, this.contextManager);
+    this.messageTracker = new ExtensionMessageTracker(chromeManager, pageManager); // Week 3 新增
+    this.testHandler = new ExtensionTestHandler(chromeManager, pageManager); // Week 4 新增
   }
 
   /**
@@ -93,5 +107,44 @@ export class ExtensionHandler {
    */
   async inspectExtensionStorage(args: InspectExtensionStorageArgs) {
     return await this.storageManager.inspectExtensionStorage(args);
+  }
+
+  // ===== Week 3 高级调试功能 =====
+
+  /**
+   * 监控扩展消息传递
+   */
+  async monitorExtensionMessages(args: MonitorExtensionMessagesArgs) {
+    return await this.messageTracker.monitorExtensionMessages(args);
+  }
+
+  /**
+   * 追踪扩展API调用
+   */
+  async trackExtensionAPICalls(args: TrackExtensionAPICallsArgs) {
+    return await this.messageTracker.trackExtensionAPICalls(args);
+  }
+
+  /**
+   * 获取消息监控统计
+   */
+  getMessageTrackingStats() {
+    return this.messageTracker.getMonitoringStats();
+  }
+
+  /**
+   * 停止消息监控
+   */
+  stopMessageTracking() {
+    return this.messageTracker.stopMonitoring();
+  }
+
+  // ===== Week 4 批量测试功能 =====
+
+  /**
+   * 在多个页面批量测试扩展
+   */
+  async testExtensionOnMultiplePages(args: TestExtensionOnMultiplePagesArgs): Promise<ExtensionTestResult> {
+    return await this.testHandler.testExtensionOnMultiplePages(args);
   }
 }
