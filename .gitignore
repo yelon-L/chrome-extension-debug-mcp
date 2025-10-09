@@ -29,4 +29,7 @@ coverage/
 .env
 .env.local
 .env.*.local
-# **/test*
+
+# Test files
+test*
+working-test-extension

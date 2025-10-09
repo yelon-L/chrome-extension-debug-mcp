@@ -184,6 +184,9 @@ export interface CloseTabArgs {
   tabId: string;
 }
 
+// Week 2: Context Management Types
+export * from './context-types.js';
+
 // Remote MCP Transport Types
 export type TransportType = 'stdio' | 'sse' | 'http';
 

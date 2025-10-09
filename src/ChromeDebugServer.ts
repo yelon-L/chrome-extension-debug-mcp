@@ -280,6 +280,77 @@ export class ChromeDebugServer {
           }
         },
         {
+          name: 'list_extension_contexts',
+          description: 'Week 2: List all contexts (background, content scripts, popup, options, devtools) for Chrome extensions with detailed status analysis',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Optional specific extension ID to analyze. If not provided, analyzes all extensions.'
+              }
+            }
+          }
+        },
+        {
+          name: 'switch_extension_context',
+          description: 'Week 2 Day 8-10: Switch to a specific extension context (background, content_script, popup, options, devtools) with capability detection',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to switch context for'
+              },
+              contextType: {
+                type: 'string',
+                enum: ['background', 'content_script', 'popup', 'options', 'devtools'],
+                description: 'Type of context to switch to'
+              },
+              tabId: {
+                type: 'string',
+                description: 'Required for content_script context type'
+              },
+              targetId: {
+                type: 'string', 
+                description: 'Optional direct target ID'
+              }
+            },
+            required: ['extensionId', 'contextType']
+          }
+        },
+        {
+          name: 'inspect_extension_storage',
+          description: 'Week 2 Day 11-12: Inspect and monitor Chrome extension storage (local, sync, session, managed) with usage quotas and capabilities',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to inspect storage for'
+              },
+              storageTypes: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  enum: ['local', 'sync', 'session', 'managed']
+                },
+                description: 'Storage types to inspect (defaults to all)'
+              },
+              keys: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific storage keys to retrieve (optional, defaults to all)'
+              },
+              watch: {
+                type: 'boolean',
+                description: 'Enable storage change monitoring (optional, defaults to false)'
+              }
+            },
+            required: ['extensionId']
+          }
+        },
+        {
           name: 'content_script_status',
           description: 'Enhanced content script status analysis with comprehensive injection detection, conflict analysis, and performance monitoring',
           inputSchema: {
@@ -339,6 +410,12 @@ export class ChromeDebugServer {
             return await this.handleInjectContentScript(args as any);
           case 'content_script_status':
             return await this.handleContentScriptStatus(args as any);
+          case 'list_extension_contexts':
+            return await this.handleListExtensionContexts(args as any);
+          case 'switch_extension_context':
+            return await this.handleSwitchExtensionContext(args as any);
+          case 'inspect_extension_storage':
+            return await this.handleInspectExtensionStorage(args as any);
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -430,19 +507,52 @@ export class ChromeDebugServer {
   }
 
   public async handleListExtensions(args: any) {
-    return await this.extensionHandler.listExtensions(args);
+    const result = await this.extensionHandler.listExtensions(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
   }
 
   public async handleGetExtensionLogs(args: any) {
-    return await this.extensionHandler.getExtensionLogs(args);
+    const result = await this.extensionHandler.getExtensionLogs(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
   }
 
   public async handleInjectContentScript(args: any) {
-    return await this.extensionHandler.injectContentScript(args);
+    const result = await this.extensionHandler.injectContentScript(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
   }
 
   public async handleContentScriptStatus(args: any) {
-    return await this.extensionHandler.contentScriptStatus(args);
+    const result = await this.extensionHandler.contentScriptStatus(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleListExtensionContexts(args: any) {
+    const result = await this.extensionHandler.listExtensionContexts(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleSwitchExtensionContext(args: any) {
+    const result = await this.extensionHandler.switchExtensionContext(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleInspectExtensionStorage(args: any) {
+    const result = await this.extensionHandler.inspectExtensionStorage(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
   }
 
   /**
