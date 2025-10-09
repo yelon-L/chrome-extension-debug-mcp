@@ -478,6 +478,40 @@ export class ChromeDebugServer {
             required: ['extensionId', 'testUrls']
           }
         },
+        {
+          name: 'analyze_extension_performance',
+          description: 'Phase 1 Performance: Analyze extension performance impact with Chrome Tracing, calculate CPU/memory usage, execution time, Core Web Vitals impact, and provide optimization recommendations',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to analyze performance for'
+              },
+              testUrl: {
+                type: 'string',
+                description: 'URL to test extension performance on'
+              },
+              duration: {
+                type: 'number',
+                description: 'Performance trace recording duration in milliseconds (default: 3000)'
+              },
+              iterations: {
+                type: 'number',
+                description: 'Number of test iterations for averaging (default: 1)'
+              },
+              includeScreenshots: {
+                type: 'boolean',
+                description: 'Include screenshots in trace recording (default: false)'
+              },
+              waitForIdle: {
+                type: 'boolean',
+                description: 'Wait for network idle before measuring (default: true)'
+              }
+            },
+            required: ['extensionId', 'testUrl']
+          }
+        },
       ],
     }));
 
@@ -527,6 +561,8 @@ export class ChromeDebugServer {
             return await this.handleMonitorExtensionMessages(args as any);
           case 'track_extension_api_calls':
             return await this.handleTrackExtensionAPICalls(args as any);
+          case 'analyze_extension_performance':
+            return await this.handleAnalyzeExtensionPerformance(args as any);
           case 'test_extension_on_multiple_pages':
             return await this.handleTestExtensionOnMultiplePages(args as any);
           default:
@@ -686,6 +722,15 @@ export class ChromeDebugServer {
 
   public async handleTestExtensionOnMultiplePages(args: any) {
     const result = await this.extensionHandler.testExtensionOnMultiplePages(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  // ===== Phase 1 性能分析功能处理器 =====
+
+  public async handleAnalyzeExtensionPerformance(args: any) {
+    const result = await this.extensionHandler.analyzeExtensionPerformance(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };

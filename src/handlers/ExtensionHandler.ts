@@ -14,6 +14,7 @@ import { ExtensionContextManager } from './extension/ExtensionContextManager.js'
 import { ExtensionStorageManager } from './extension/ExtensionStorageManager.js';
 import { ExtensionMessageTracker } from './extension/ExtensionMessageTracker.js';
 import { ExtensionTestHandler } from './extension/ExtensionTestHandler.js';
+import { ExtensionPerformanceAnalyzer } from './extension/ExtensionPerformanceAnalyzer.js';
 
 // 导入类型
 import {
@@ -33,6 +34,10 @@ import {
   TestExtensionOnMultiplePagesArgs,
   ExtensionTestResult
 } from '../types/extension-test-types.js';
+import {
+  PerformanceAnalysisOptions,
+  PerformanceAnalysisResult
+} from '../types/performance-types.js';
 
 /**
  * 扩展处理器 - 模块化架构的统一协调器
@@ -45,6 +50,7 @@ export class ExtensionHandler {
   private storageManager: ExtensionStorageManager;
   private messageTracker: ExtensionMessageTracker; // Week 3 新增
   private testHandler: ExtensionTestHandler; // Week 4 新增
+  private performanceAnalyzer: ExtensionPerformanceAnalyzer; // Phase 1 性能分析
 
   constructor(
     private chromeManager: ChromeManager,
@@ -58,6 +64,7 @@ export class ExtensionHandler {
     this.storageManager = new ExtensionStorageManager(chromeManager, pageManager, this.contextManager);
     this.messageTracker = new ExtensionMessageTracker(chromeManager, pageManager); // Week 3 新增
     this.testHandler = new ExtensionTestHandler(chromeManager, pageManager); // Week 4 新增
+    this.performanceAnalyzer = new ExtensionPerformanceAnalyzer(chromeManager, pageManager); // Phase 1 性能分析
   }
 
   /**
@@ -146,5 +153,14 @@ export class ExtensionHandler {
    */
   async testExtensionOnMultiplePages(args: TestExtensionOnMultiplePagesArgs): Promise<ExtensionTestResult> {
     return await this.testHandler.testExtensionOnMultiplePages(args);
+  }
+
+  // ===== Phase 1 性能分析功能 =====
+
+  /**
+   * 分析扩展性能影响
+   */
+  async analyzeExtensionPerformance(args: PerformanceAnalysisOptions): Promise<PerformanceAnalysisResult> {
+    return await this.performanceAnalyzer.analyzePerformance(args);
   }
 }
