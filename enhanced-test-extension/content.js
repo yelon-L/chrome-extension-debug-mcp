@@ -391,4 +391,170 @@ setInterval(() => {
   });
 }, 60000); // 每60秒
 
-console.log('[Enhanced Content] ✅ v4.0加载完成 - Week 1-4全功能测试就绪');
+// ========== Phase 1 性能测试模块 ==========
+
+/**
+ * Content Script性能测试管理器
+ * 响应background的性能测试命令，执行DOM操作等影响页面性能的操作
+ */
+class ContentPerformanceTester {
+  constructor() {
+    this.testElements = [];
+    this.isActive = false;
+    this.setupMessageHandler();
+    console.log('[Enhanced Content] 🎯 Phase 1: 性能测试模块已加载');
+  }
+
+  setupMessageHandler() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'performance_test') {
+        console.log('[Enhanced Content] 🚀 Phase 1: 收到性能测试命令', message);
+        this.executePerformanceTest(message.operations, message.level);
+        sendResponse({ success: true, executed: true });
+      }
+    });
+  }
+
+  executePerformanceTest(operations, level) {
+    this.isActive = true;
+    console.log(`[Enhanced Content] 🎯 执行性能测试 - 操作数: ${operations}, 级别: ${level}`);
+
+    // 1. DOM操作测试
+    this.performDOMOperations(operations);
+
+    // 2. Layout触发
+    this.triggerLayoutOperations(operations / 2);
+
+    // 3. Paint触发
+    this.triggerPaintOperations(operations / 4);
+
+    // 4. JavaScript执行时间
+    this.executeJavaScriptWork(level);
+
+    console.log('[Enhanced Content] ✅ 性能测试执行完成');
+  }
+
+  /**
+   * 执行DOM操作
+   */
+  performDOMOperations(count) {
+    const container = document.createElement('div');
+    container.id = 'mcp-performance-test-container';
+    container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+    
+    console.log(`[Enhanced Content] 📦 创建 ${count} 个DOM元素`);
+    
+    for (let i = 0; i < count; i++) {
+      const element = document.createElement('div');
+      element.className = 'mcp-test-element';
+      element.textContent = `Performance Test Element ${i}`;
+      element.style.cssText = `
+        width: 100px;
+        height: 100px;
+        background: hsl(${i * 360 / count}, 70%, 50%);
+        margin: 5px;
+        padding: 10px;
+        border: 1px solid black;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      `;
+      container.appendChild(element);
+      this.testElements.push(element);
+    }
+    
+    if (document.body) {
+      document.body.appendChild(container);
+    }
+  }
+
+  /**
+   * 触发Layout操作
+   */
+  triggerLayoutOperations(count) {
+    console.log(`[Enhanced Content] 📐 触发 ${count} 次Layout`);
+    
+    for (let i = 0; i < count; i++) {
+      if (this.testElements[i]) {
+        // 强制Layout
+        const height = this.testElements[i].offsetHeight;
+        this.testElements[i].style.height = (height + 1) + 'px';
+      }
+    }
+  }
+
+  /**
+   * 触发Paint操作
+   */
+  triggerPaintOperations(count) {
+    console.log(`[Enhanced Content] 🎨 触发 ${count} 次Paint`);
+    
+    for (let i = 0; i < count; i++) {
+      if (this.testElements[i]) {
+        // 改变视觉属性触发Paint
+        this.testElements[i].style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+      }
+    }
+  }
+
+  /**
+   * JavaScript执行工作
+   */
+  executeJavaScriptWork(level) {
+    console.log(`[Enhanced Content] ⚡ 执行JavaScript计算 - 级别: ${level}`);
+    
+    const iterations = {
+      low: 10000,
+      medium: 50000,
+      high: 100000,
+      extreme: 200000
+    };
+
+    const count = iterations[level] || iterations.medium;
+    const start = performance.now();
+    
+    let result = 0;
+    for (let i = 0; i < count; i++) {
+      result += Math.sqrt(i) * Math.sin(i / 100) * Math.cos(i / 100);
+    }
+    
+    const elapsed = performance.now() - start;
+    console.log(`[Enhanced Content] ⚡ JavaScript计算完成: ${elapsed.toFixed(2)}ms, 结果: ${result.toFixed(2)}`);
+  }
+
+  /**
+   * 清理测试元素
+   */
+  cleanup() {
+    const container = document.getElementById('mcp-performance-test-container');
+    if (container) {
+      container.remove();
+    }
+    this.testElements = [];
+    this.isActive = false;
+    console.log('[Enhanced Content] 🧹 性能测试元素已清理');
+  }
+}
+
+// 创建content性能测试实例
+const contentPerformanceTester = new ContentPerformanceTester();
+
+// 定期轻度DOM操作（模拟真实扩展行为）
+setInterval(() => {
+  if (!contentPerformanceTester.isActive) {
+    // 轻度DOM查询操作
+    const elements = document.querySelectorAll('a, button, input');
+    let count = 0;
+    elements.forEach(el => {
+      if (el.offsetWidth > 0) count++;
+    });
+    
+    if (count > 0 && Math.random() > 0.95) {
+      console.log(`[Enhanced Content] 📊 扫描到 ${count} 个可交互元素`);
+    }
+  }
+}, 3000); // 每3秒
+
+// 更新版本标记
+document.documentElement.setAttribute('data-mcp-extension-version', '4.1.0');
+document.documentElement.setAttribute('data-mcp-performance-test-ready', 'true');
+
+console.log('[Enhanced Content] ✅ v4.1加载完成 - Week 1-4全功能 + Phase 1性能测试就绪');

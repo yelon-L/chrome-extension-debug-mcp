@@ -322,4 +322,200 @@ setInterval(() => {
   console[logType](`[Enhanced Background] ${message}`, data);
 }, 30000); // 每30秒
 
-console.log('[Enhanced Background] ✅ v4.0初始化完成 - Week 1-4全功能测试就绪');
+// ========== Phase 1 性能测试模块 ==========
+
+/**
+ * 性能测试管理器
+ * 用于模拟不同级别的性能影响，便于测试analyze_extension_performance工具
+ */
+class PerformanceTester {
+  constructor() {
+    this.isPerformanceTestMode = false;
+    this.performanceLevel = 'medium'; // low, medium, high, extreme
+    this.memoryCache = [];
+    this.setupPerformanceTestHandlers();
+    console.log('[Enhanced Background] 🎯 Phase 1: 性能测试模块已加载');
+  }
+
+  setupPerformanceTestHandlers() {
+    // 监听性能测试命令
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'start_performance_test') {
+        console.log('[Enhanced Background] 🚀 Phase 1: 启动性能测试模式', message.level);
+        this.startPerformanceTest(message.level || 'medium');
+        sendResponse({ success: true, mode: 'performance_test_started' });
+      } else if (message.type === 'stop_performance_test') {
+        console.log('[Enhanced Background] 🛑 Phase 1: 停止性能测试模式');
+        this.stopPerformanceTest();
+        sendResponse({ success: true, mode: 'performance_test_stopped' });
+      }
+    });
+  }
+
+  startPerformanceTest(level) {
+    this.isPerformanceTestMode = true;
+    this.performanceLevel = level;
+    
+    console.log(`[Enhanced Background] 🎯 性能测试启动 - 级别: ${level}`);
+    
+    // 根据级别执行不同强度的操作
+    this.performanceLevelConfigs = {
+      low: {
+        cpuInterval: 1000,
+        cpuDuration: 50,
+        memorySize: 1024 * 100, // 100KB
+        domOperations: 10
+      },
+      medium: {
+        cpuInterval: 500,
+        cpuDuration: 100,
+        memorySize: 1024 * 1024, // 1MB
+        domOperations: 50
+      },
+      high: {
+        cpuInterval: 200,
+        cpuDuration: 200,
+        memorySize: 1024 * 1024 * 5, // 5MB
+        domOperations: 100
+      },
+      extreme: {
+        cpuInterval: 100,
+        cpuDuration: 500,
+        memorySize: 1024 * 1024 * 10, // 10MB
+        domOperations: 200
+      }
+    };
+
+    const config = this.performanceLevelConfigs[level] || this.performanceLevelConfigs.medium;
+
+    // 1. CPU密集型操作
+    this.cpuTestInterval = setInterval(() => {
+      this.simulateCPULoad(config.cpuDuration);
+    }, config.cpuInterval);
+
+    // 2. 内存占用
+    this.simulateMemoryUsage(config.memorySize);
+
+    // 3. 通知content script执行DOM操作
+    this.notifyContentScriptsForPerformanceTest(config.domOperations);
+
+    console.log('[Enhanced Background] ✅ 性能测试配置应用完成');
+  }
+
+  stopPerformanceTest() {
+    this.isPerformanceTestMode = false;
+    
+    if (this.cpuTestInterval) {
+      clearInterval(this.cpuTestInterval);
+      this.cpuTestInterval = null;
+    }
+
+    // 清理内存
+    this.memoryCache = [];
+    
+    console.log('[Enhanced Background] ✅ 性能测试已停止，资源已释放');
+  }
+
+  /**
+   * 模拟CPU密集型计算
+   */
+  simulateCPULoad(duration) {
+    const start = performance.now();
+    let result = 0;
+    
+    // 执行计算密集型操作
+    while (performance.now() - start < duration) {
+      // 斐波那契数列计算
+      for (let i = 0; i < 1000; i++) {
+        result += Math.sqrt(i) * Math.sin(i) * Math.cos(i);
+      }
+      
+      // 字符串操作
+      let str = 'performance test';
+      for (let i = 0; i < 100; i++) {
+        str = str.split('').reverse().join('');
+      }
+    }
+    
+    const elapsed = performance.now() - start;
+    if (elapsed > 10) { // 只记录较长的操作
+      console.log(`[Enhanced Background] ⚡ CPU测试: ${elapsed.toFixed(2)}ms`);
+    }
+  }
+
+  /**
+   * 模拟内存占用
+   */
+  simulateMemoryUsage(size) {
+    console.log(`[Enhanced Background] 💾 分配内存: ${(size / 1024 / 1024).toFixed(2)}MB`);
+    
+    // 创建大数组占用内存
+    const arraySize = Math.floor(size / 8); // 每个数字8字节
+    const largeArray = new Array(arraySize);
+    
+    for (let i = 0; i < arraySize; i++) {
+      largeArray[i] = Math.random() * 1000000;
+    }
+    
+    this.memoryCache.push(largeArray);
+    
+    // 防止内存无限增长，保持最多5个数组
+    if (this.memoryCache.length > 5) {
+      this.memoryCache.shift();
+    }
+  }
+
+  /**
+   * 通知content scripts执行性能测试
+   */
+  async notifyContentScriptsForPerformanceTest(operations) {
+    try {
+      const tabs = await chrome.tabs.query({});
+      
+      for (const tab of tabs) {
+        if (tab.id && tab.url && !tab.url.startsWith('chrome://')) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'performance_test',
+            operations: operations,
+            level: this.performanceLevel
+          }).catch(err => {
+            // 忽略无法连接的标签页
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[Enhanced Background] ❌ 通知content script失败:', error);
+    }
+  }
+
+  /**
+   * 获取性能测试状态
+   */
+  getStatus() {
+    return {
+      enabled: this.isPerformanceTestMode,
+      level: this.performanceLevel,
+      memoryCacheSize: this.memoryCache.length,
+      memoryUsageEstimate: this.memoryCache.reduce((sum, arr) => sum + arr.length * 8, 0)
+    };
+  }
+}
+
+// 创建性能测试实例
+const performanceTester = new PerformanceTester();
+
+// 定期轻度性能影响（模拟真实扩展行为）
+setInterval(() => {
+  // 模拟扩展的正常活动
+  const lightCPUWork = () => {
+    let result = 0;
+    for (let i = 0; i < 10000; i++) {
+      result += Math.sqrt(i);
+    }
+    return result;
+  };
+  
+  lightCPUWork();
+}, 5000); // 每5秒
+
+console.log('[Enhanced Background] ✅ v4.1初始化完成 - Week 1-4全功能 + Phase 1性能测试就绪');
