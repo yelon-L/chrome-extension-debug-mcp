@@ -2,7 +2,8 @@
  * Page Management Module
  * Handles Chrome page lifecycle and tab switching
  */
-import * as puppeteer from 'puppeteer';
+type Browser = any;
+type Page = any;
 export declare class PageManager {
     private browser;
     private currentPage;
@@ -10,11 +11,11 @@ export declare class PageManager {
     private pageToTabId;
     private tabIdCounter;
     constructor();
-    setBrowser(browser: puppeteer.Browser): void;
-    getBrowser(): puppeteer.Browser | null;
-    getCurrentPage(): puppeteer.Page | null;
-    getTabIdToPageMap(): Map<string, puppeteer.Page>;
-    getPageToTabIdMap(): WeakMap<puppeteer.Page, string>;
+    setBrowser(browser: Browser): void;
+    getBrowser(): Browser | null;
+    getCurrentPage(): Page | null;
+    getTabIdToPageMap(): Map<string, Page>;
+    getPageToTabIdMap(): WeakMap<Page, string>;
     /**
      * Ensure all pages have stable tab IDs
      */
@@ -26,7 +27,7 @@ export declare class PageManager {
      * This fixes the tab switching context mismatch issue where evaluate
      * was executing on the wrong page.
      */
-    getActivePage(): Promise<puppeteer.Page>;
+    getActivePage(): Promise<Page>;
     /**
      * Switch to a specific tab with robust verification and retry
      */
@@ -59,4 +60,5 @@ export declare class PageManager {
      */
     cleanup(): Promise<void>;
 }
+export {};
 //# sourceMappingURL=PageManager.d.ts.map

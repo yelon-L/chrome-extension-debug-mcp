@@ -12,6 +12,10 @@ export declare class ExtensionDetector {
      */
     listExtensions(args: ListExtensionsArgs): Promise<any[]>;
     /**
+     * 获取扩展完整信息（包括名称）
+     */
+    getExtensionFullInfo(extensionId: string): Promise<any>;
+    /**
      * 提取扩展ID从URL
      */
     extractExtensionId(url: string): string | null;

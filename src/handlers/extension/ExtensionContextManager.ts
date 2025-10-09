@@ -492,13 +492,14 @@ export class ExtensionContextManager {
 
       if (attachResult.sessionId) {
         // 在新会话中启用必要的域
-        await cdpClient.send('Runtime.enable', undefined, attachResult.sessionId);
-        await cdpClient.send('Console.enable', undefined, attachResult.sessionId);
+        // 使用会话发送命令
+        await cdpClient.Runtime.enable({ sessionId: attachResult.sessionId });
+        await cdpClient.Console.enable({ sessionId: attachResult.sessionId });
         
         // 如果是页面类型，还启用Page域
         if (target.contextType !== 'background') {
           try {
-            await cdpClient.send('Page.enable', undefined, attachResult.sessionId);
+            await cdpClient.Page.enable({ sessionId: attachResult.sessionId });
           } catch (e) {
             // 某些上下文可能不支持Page域，忽略错误
             log('Page domain not available for context:', target.contextType);

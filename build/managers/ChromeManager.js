@@ -9,9 +9,52 @@ import { readFile } from 'fs/promises';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[ChromeManager]', ...args);
 export class ChromeManager {
+    /**
+     * 安全的CDP操作执行，包含重试机制
+     */
+    async executeCdpOperation(operation, operationName = 'CDP Operation') {
+        let retryCount = 0;
+        const maxRetries = 3;
+        while (retryCount < maxRetries) {
+            try {
+                if (!this.cdpClient) {
+                    throw new Error('CDP client not available');
+                }
+                const result = await operation();
+                // 重置重试计数
+                this.connectionRetryCount.set(operationName, 0);
+                return result;
+            }
+            catch (error) {
+                retryCount++;
+                const errorMsg = error.message;
+                log(`⚠️  ${operationName} failed (attempt ${retryCount}/${maxRetries}): ${errorMsg}`);
+                // 检查是否是连接相关错误
+                if (errorMsg.includes('WebSocket') || errorMsg.includes('CLOSED') || errorMsg.includes('not open')) {
+                    this.connectionHealth = 'unhealthy';
+                    if (retryCount < maxRetries) {
+                        log(`🔄 Retrying ${operationName} in 1 second...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await this.attemptReconnect();
+                    }
+                }
+                else {
+                    // 非连接错误，直接抛出
+                    throw error;
+                }
+                if (retryCount === maxRetries) {
+                    throw new Error(`${operationName} failed after ${maxRetries} attempts: ${errorMsg}`);
+                }
+            }
+        }
+        throw new Error(`Unexpected error in ${operationName}`);
+    }
     constructor() {
         this.browser = null;
         this.cdpClient = null;
+        // 增强WebSocket连接管理
+        this.connectionRetryCount = new Map();
+        this.maxRetries = 3;
         this.consoleLogs = [];
         this.structuredLogs = []; // 新增结构化日志存储
         this.attachedSessions = new Set();
@@ -797,7 +840,7 @@ export class ChromeManager {
         try {
             // 获取所有目标并缓存扩展信息
             const targets = await this.cdpClient.Target.getTargets();
-            const extensions = targets.targetInfos?.filter(target => target.type === 'service_worker' &&
+            const extensions = targets.targetInfos?.filter((target) => target.type === 'service_worker' &&
                 target.url.startsWith('chrome-extension://')) || [];
             // 缓存扩展目标信息
             for (const ext of extensions) {

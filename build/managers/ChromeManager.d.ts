@@ -2,6 +2,7 @@
  * Chrome Connection Management Module
  * Handles Chrome launching, CDP connection, and console monitoring
  */
+type Browser = any;
 import { LaunchChromeArgs, AttachArgs, ExtensionLogEntry } from '../types/index.js';
 interface Client {
     close(): Promise<void>;
@@ -15,6 +16,12 @@ interface Client {
 export declare class ChromeManager {
     private browser;
     private cdpClient;
+    private connectionRetryCount;
+    private maxRetries;
+    /**
+     * 安全的CDP操作执行，包含重试机制
+     */
+    executeCdpOperation<T>(operation: () => Promise<T>, operationName?: string): Promise<T>;
     private consoleLogs;
     private structuredLogs;
     private attachedSessions;
@@ -30,7 +37,7 @@ export declare class ChromeManager {
     private connectionConfig;
     private extensionCache;
     constructor();
-    getBrowser(): puppeteer.Browser | null;
+    getBrowser(): Browser | null;
     getCdpClient(): Client | null;
     getConsoleLogs(): string[];
     getStructuredLogs(): ExtensionLogEntry[];

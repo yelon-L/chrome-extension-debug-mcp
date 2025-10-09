@@ -3,39 +3,41 @@
  * Handles Chrome page lifecycle and tab switching
  */
 
-import * as puppeteer from 'puppeteer';
+// 使用any类型避免puppeteer版本冲突
+type Browser = any;
+type Page = any;
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.error('[PageManager]', ...args);
 
 export class PageManager {
-  private browser: puppeteer.Browser | null = null;
-  private currentPage: puppeteer.Page | null = null;
-  private tabIdToPage: Map<string, puppeteer.Page> = new Map();
-  private pageToTabId: WeakMap<puppeteer.Page, string> = new WeakMap();
+  private browser: Browser | null = null;
+  private currentPage: Page | null = null;
+  private tabIdToPage: Map<string, Page> = new Map();
+  private pageToTabId: WeakMap<Page, string> = new WeakMap();
   private tabIdCounter = 0;
 
   constructor() {}
 
-  setBrowser(browser: puppeteer.Browser) {
+  setBrowser(browser: Browser) {
     this.browser = browser;
     this.ensureTabIds();
   }
 
-  getBrowser(): puppeteer.Browser | null {
+  getBrowser(): Browser | null {
     return this.browser;
   }
 
-  getCurrentPage(): puppeteer.Page | null {
+  getCurrentPage(): Page | null {
     return this.currentPage;
   }
 
-  getTabIdToPageMap(): Map<string, puppeteer.Page> {
+  getTabIdToPageMap(): Map<string, Page> {
     return this.tabIdToPage;
   }
 
-  getPageToTabIdMap(): WeakMap<puppeteer.Page, string> {
+  getPageToTabIdMap(): WeakMap<Page, string> {
     return this.pageToTabId;
   }
 
@@ -65,7 +67,7 @@ export class PageManager {
    * This fixes the tab switching context mismatch issue where evaluate
    * was executing on the wrong page.
    */
-  async getActivePage(): Promise<puppeteer.Page> {
+  async getActivePage(): Promise<Page> {
     if (!this.browser) {
       throw new McpError(ErrorCode.InternalError, 'Chrome is not running. Call launch_chrome first.');
     }
@@ -233,7 +235,7 @@ export class PageManager {
     const pages = await this.browser.pages();
     await this.ensureTabIds();
     
-    const list = await Promise.all(pages.map(async (p) => {
+    const list = await Promise.all(pages.map(async (p: any) => {
       const id = this.pageToTabId.get(p) || `tab_${++this.tabIdCounter}`;
       if (!this.pageToTabId.has(p)) {
         this.pageToTabId.set(p, id);

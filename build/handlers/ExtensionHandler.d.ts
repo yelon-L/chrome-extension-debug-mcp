@@ -147,7 +147,7 @@ export declare class ExtensionHandler {
     /**
      * 等待弹窗出现
      */
-    waitForDialog(timeout?: number): Promise<import("./interaction/DialogManager.js").DialogDetectionResult | null>;
+    waitForDialog(timeout?: number): Promise<import("./interaction/DialogManager.js").DialogDetectionResult>;
     /**
      * 搜索扩展日志
      */

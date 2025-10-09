@@ -59,7 +59,7 @@ export declare const cliOptions: {
         readonly coerce: (arg: string | undefined) => {
             width: number;
             height: number;
-        } | undefined;
+        };
     };
     readonly proxyServer: {
         readonly type: "string";

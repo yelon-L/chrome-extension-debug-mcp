@@ -3,7 +3,7 @@ node_modules/
 package-lock.json
 
 # Build output
-# build/
+build/
 dist/
 
 # IDE files
@@ -32,4 +32,3 @@ coverage/
 
 # Test files
 # test*
-# working-test-extension

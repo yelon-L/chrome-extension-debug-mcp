@@ -86,7 +86,7 @@ export class ChromeLifecycleManager {
         
         return this.connectionInfo;
       } catch (error) {
-        log('⚠️  [Lifecycle] Failed to attach to existing Chrome:', error.message);
+        log('⚠️  [Lifecycle] Failed to attach to existing Chrome:', (error as Error).message);
       }
     }
 

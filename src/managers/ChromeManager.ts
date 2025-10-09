@@ -3,7 +3,10 @@
  * Handles Chrome launching, CDP connection, and console monitoring
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer-core';
+import puppeteer from 'puppeteer-core';
+// 使用any类型避免puppeteer版本冲突
+type Browser = any;
+type Page = any;
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 import { readFile } from 'fs/promises';
@@ -24,8 +27,60 @@ const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.error('[ChromeManager]', ...args);
 
 export class ChromeManager {
-  private browser: puppeteer.Browser | null = null;
+  private browser: Browser | null = null;
   private cdpClient: Client | null = null;
+
+  // 增强WebSocket连接管理
+  private connectionRetryCount: Map<string, number> = new Map();
+  private maxRetries: number = 3;
+
+  /**
+   * 安全的CDP操作执行，包含重试机制
+   */
+  async executeCdpOperation<T>(operation: () => Promise<T>, operationName: string = 'CDP Operation'): Promise<T> {
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        if (!this.cdpClient) {
+          throw new Error('CDP client not available');
+        }
+
+        const result = await operation();
+        
+        // 重置重试计数
+        this.connectionRetryCount.set(operationName, 0);
+        return result;
+
+      } catch (error) {
+        retryCount++;
+        const errorMsg = (error as Error).message;
+        
+        log(`⚠️  ${operationName} failed (attempt ${retryCount}/${maxRetries}): ${errorMsg}`);
+        
+        // 检查是否是连接相关错误
+        if (errorMsg.includes('WebSocket') || errorMsg.includes('CLOSED') || errorMsg.includes('not open')) {
+          this.connectionHealth = 'unhealthy';
+          
+          if (retryCount < maxRetries) {
+            log(`🔄 Retrying ${operationName} in 1 second...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await this.attemptReconnect();
+          }
+        } else {
+          // 非连接错误，直接抛出
+          throw error;
+        }
+        
+        if (retryCount === maxRetries) {
+          throw new Error(`${operationName} failed after ${maxRetries} attempts: ${errorMsg}`);
+        }
+      }
+    }
+    
+    throw new Error(`Unexpected error in ${operationName}`);
+  }
   private consoleLogs: string[] = [];
   private structuredLogs: ExtensionLogEntry[] = []; // 新增结构化日志存储
   private attachedSessions: Set<string> = new Set();
@@ -47,7 +102,7 @@ export class ChromeManager {
 
   constructor() {}
 
-  getBrowser(): puppeteer.Browser | null {
+  getBrowser(): Browser | null {
     return this.browser;
   }
 
@@ -215,7 +270,7 @@ export class ChromeManager {
       }
 
       // Configure Chrome launch options
-      const launchOptions: puppeteer.PuppeteerLaunchOptions = {
+      const launchOptions: any = {
         headless: false,
         ignoreDefaultArgs: ['--disable-extensions'],
         args: [
@@ -223,7 +278,7 @@ export class ChromeManager {
           '--disable-web-security',
           '--no-sandbox'
         ]
-      } as puppeteer.PuppeteerLaunchOptions;
+      };
 
       // Configure user data directory if specified
       if (args?.userDataDir) {
@@ -458,7 +513,7 @@ export class ChromeManager {
         throw new Error(`Chrome debug interface not responding (HTTP ${response.status})`);
       }
       
-      const data = await response.json();
+      const data = await response.json() as any;
       log(`✅ [Pre-check] Chrome ${data.Browser} is accessible`);
     } catch (error) {
       throw new Error(`Pre-connection check failed: ${error}`);
@@ -697,7 +752,7 @@ export class ChromeManager {
         if ((p as any)._mcpConsoleHooked) continue;
         // @ts-ignore
         (p as any)._mcpConsoleHooked = true;
-        p.on('console', (msg) => {
+        p.on('console', (msg: any) => {
           try {
             const type = msg.type();
             const text = msg.text();
@@ -730,7 +785,7 @@ export class ChromeManager {
       }
 
       // Hook future pages
-      this.browser.on('targetcreated', async (target) => {
+      this.browser.on('targetcreated', async (target: any) => {
         try {
           if (target.type() !== 'page') return;
           const p = await target.page();
@@ -739,7 +794,7 @@ export class ChromeManager {
           if ((p as any)._mcpConsoleHooked) return;
           // @ts-ignore
           (p as any)._mcpConsoleHooked = true;
-          p.on('console', (msg) => {
+          p.on('console', (msg: any) => {
             try {
               const type = msg.type();
               const text = msg.text();
@@ -779,7 +834,7 @@ export class ChromeManager {
   /**
    * Inject userscript into a page
    */
-  private async injectUserscript(page: puppeteer.Page, userscriptPath: string): Promise<void> {
+  private async injectUserscript(page: any, userscriptPath: string): Promise<void> {
     let scriptContent = '';
     try {
       log('Reading userscript from:', userscriptPath);
@@ -911,7 +966,7 @@ export class ChromeManager {
     try {
       // 获取所有目标并缓存扩展信息
       const targets = await this.cdpClient.Target.getTargets();
-      const extensions = targets.targetInfos?.filter(target => 
+      const extensions = targets.targetInfos?.filter((target: any) => 
         target.type === 'service_worker' && 
         target.url.startsWith('chrome-extension://')
       ) || [];
@@ -934,7 +989,7 @@ export class ChromeManager {
       log(`🚀 [Enhanced Discovery] Cached ${extensions.length} extension targets`);
 
       // 监听新目标创建
-      this.cdpClient.Target.targetCreated(({ targetInfo }) => {
+      this.cdpClient.Target.targetCreated(({ targetInfo }: any) => {
         if (targetInfo.type === 'service_worker' && 
             targetInfo.url.startsWith('chrome-extension://')) {
           const extensionId = this.extractExtensionId(targetInfo.url);
@@ -953,7 +1008,7 @@ export class ChromeManager {
       });
 
       // 监听目标销毁
-      this.cdpClient.Target.targetDestroyed(({ targetId }) => {
+      this.cdpClient.Target.targetDestroyed(({ targetId }: any) => {
         if (this.targetInfo.has(targetId)) {
           const target = this.targetInfo.get(targetId);
           if (target?.url.startsWith('chrome-extension://')) {
