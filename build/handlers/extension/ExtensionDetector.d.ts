@@ -13,8 +13,13 @@ export declare class ExtensionDetector {
     listExtensions(args: ListExtensionsArgs): Promise<any[]>;
     /**
      * 获取扩展完整信息（包括名称）
+     * 使用 Target.attachToTarget 在扩展 context 中执行
      */
     getExtensionFullInfo(extensionId: string): Promise<any>;
+    /**
+     * 从 target title 提取扩展名称
+     */
+    private extractNameFromTitle;
     /**
      * 提取扩展ID从URL
      */

@@ -78,49 +78,138 @@ export class ExtensionDetector {
     }
     /**
      * 获取扩展完整信息（包括名称）
+     * 使用 Target.attachToTarget 在扩展 context 中执行
      */
     async getExtensionFullInfo(extensionId) {
         try {
             const cdpClient = this.chromeManager.getCdpClient();
             if (!cdpClient)
                 return null;
-            // 方法1: 尝试通过manifest获取
-            try {
-                const manifestResult = await cdpClient.Runtime.evaluate({
-                    expression: `
-            (async () => {
-              try {
-                const response = await fetch('chrome-extension://${extensionId}/manifest.json');
-                const manifest = await response.json();
-                return { 
-                  name: manifest.name, 
-                  version: manifest.version,
-                  description: manifest.description 
-                };
-              } catch (e) {
-                return null;
-              }
-            })()
-          `,
-                    awaitPromise: true,
-                    timeout: 3000
-                });
-                if (manifestResult.result?.value) {
-                    return manifestResult.result.value;
+            // 方法1: 通过 attachToTarget 在扩展 context 中获取 manifest
+            const { targetInfos } = await cdpClient.Target.getTargets();
+            const swTarget = targetInfos.find((t) => t.type === 'service_worker' &&
+                t.url &&
+                t.url.includes(extensionId));
+            if (swTarget) {
+                let sessionId;
+                try {
+                    // 附加到 Service Worker target
+                    const attachResult = await cdpClient.Target.attachToTarget({
+                        targetId: swTarget.targetId,
+                        flatten: true
+                    });
+                    sessionId = attachResult.sessionId;
+                    // 在 Service Worker context 中执行
+                    const result = await cdpClient.Runtime.evaluate({
+                        expression: `
+              (() => {
+                try {
+                  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+                    const manifest = chrome.runtime.getManifest();
+                    return {
+                      name: manifest.name,
+                      version: manifest.version,
+                      description: manifest.description,
+                      manifestVersion: manifest.manifest_version
+                    };
+                  }
+                  return null;
+                } catch (e) {
+                  return { error: e.message };
+                }
+              })()
+            `,
+                        returnByValue: true,
+                        awaitPromise: false
+                    });
+                    // 立即分离 session
+                    if (sessionId) {
+                        await cdpClient.Target.detachFromTarget({ sessionId });
+                        sessionId = undefined;
+                    }
+                    if (result.result?.value && !result.result.value.error) {
+                        log('Successfully got manifest from Service Worker for', extensionId);
+                        return result.result.value;
+                    }
+                }
+                catch (e) {
+                    log('Error attaching to service worker:', e);
+                    if (sessionId) {
+                        try {
+                            await cdpClient.Target.detachFromTarget({ sessionId });
+                        }
+                        catch (detachError) {
+                            // Ignore detach errors
+                        }
+                    }
                 }
             }
-            catch (e) {
-                log('Failed to get manifest info for', extensionId);
+            // 方法2: 尝试 Background Page (MV2 扩展)
+            const bgTarget = targetInfos.find((t) => t.type === 'background_page' &&
+                t.url &&
+                t.url.includes(extensionId));
+            if (bgTarget) {
+                let sessionId;
+                try {
+                    const attachResult = await cdpClient.Target.attachToTarget({
+                        targetId: bgTarget.targetId,
+                        flatten: true
+                    });
+                    sessionId = attachResult.sessionId;
+                    const result = await cdpClient.Runtime.evaluate({
+                        expression: `
+              (() => {
+                try {
+                  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+                    const manifest = chrome.runtime.getManifest();
+                    return {
+                      name: manifest.name,
+                      version: manifest.version,
+                      description: manifest.description,
+                      manifestVersion: manifest.manifest_version
+                    };
+                  }
+                  return null;
+                } catch (e) {
+                  return { error: e.message };
+                }
+              })()
+            `,
+                        returnByValue: true,
+                        awaitPromise: false
+                    });
+                    if (sessionId) {
+                        await cdpClient.Target.detachFromTarget({ sessionId });
+                        sessionId = undefined;
+                    }
+                    if (result.result?.value && !result.result.value.error) {
+                        log('Successfully got manifest from Background Page for', extensionId);
+                        return result.result.value;
+                    }
+                }
+                catch (e) {
+                    log('Error attaching to background page:', e);
+                    if (sessionId) {
+                        try {
+                            await cdpClient.Target.detachFromTarget({ sessionId });
+                        }
+                        catch (detachError) {
+                            // Ignore detach errors
+                        }
+                    }
+                }
             }
-            // 方法2: 从目标标题推断
-            const { targetInfos } = await cdpClient.Target.getTargets();
+            // 方法3: Fallback - 从目标标题提取名称（不完整）
             const extensionTarget = targetInfos.find((target) => target.url && target.url.includes(extensionId) && target.title);
-            if (extensionTarget && extensionTarget.title !== 'chrome-extension') {
-                return {
-                    name: extensionTarget.title,
-                    version: 'unknown',
-                    description: 'Detected from target info'
-                };
+            if (extensionTarget) {
+                const extractedName = this.extractNameFromTitle(extensionTarget.title);
+                if (extractedName) {
+                    return {
+                        name: extractedName,
+                        version: 'unknown',
+                        description: 'Detected from target info (incomplete)'
+                    };
+                }
             }
             return null;
         }
@@ -128,6 +217,18 @@ export class ExtensionDetector {
             log('Failed to get extension info:', error);
             return null;
         }
+    }
+    /**
+     * 从 target title 提取扩展名称
+     */
+    extractNameFromTitle(title) {
+        if (!title)
+            return null;
+        // "Service Worker chrome-extension://xxx/background/index.js" -> null
+        if (title.includes('Service Worker') || title.includes('chrome-extension://')) {
+            return null;
+        }
+        return title;
     }
     /**
      * 提取扩展ID从URL
