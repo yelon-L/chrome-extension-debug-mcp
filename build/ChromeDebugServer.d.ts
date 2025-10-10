@@ -5,6 +5,7 @@
  */
 import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
 import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandler.js';
+import { WaitHelper } from './utils/WaitHelper.js';
 import { LaunchChromeArgs, AttachArgs, GetConsoleLogsArgs, EvaluateArgs, ClickArgs, TypeArgs, ScreenshotArgs, NewTabArgs, SwitchTabArgs, CloseTabArgs, TransportType, RemoteMCPConfig } from './types/index.js';
 /**
  * Main Chrome Debug MCP Server class
@@ -24,6 +25,7 @@ export declare class ChromeDebugServer {
     private mcpContext;
     uidHandler: UIDInteractionHandler;
     advancedInteractionHandler: AdvancedInteractionHandler;
+    waitHelper: WaitHelper;
     constructor();
     /**
      * Sets up handlers for all supported MCP tools.
@@ -283,6 +285,18 @@ export declare class ChromeDebugServer {
         }[];
     }>;
     handleDialog(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleWaitForElement(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleWaitForExtensionReady(args: any): Promise<{
         content: {
             type: string;
             text: string;

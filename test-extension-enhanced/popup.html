@@ -371,6 +371,20 @@
         <button id="promptBtn" class="btn" style="width: 100%; margin-top: 5px;">触发提示对话框</button>
       </div>
     </div>
+    
+    <!-- Phase 2.3: 智能等待测试元素 -->
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+      <h4 style="margin: 0 0 10px 0; font-size: 13px;">Phase 2.3: 等待测试</h4>
+      
+      <!-- 延迟加载触发器 -->
+      <button id="loadDelayedBtn" class="btn" style="width: 100%;">加载延迟元素(2秒)</button>
+      <button id="loadSlowBtn" class="btn" style="width: 100%; margin-top: 5px;">加载慢速元素(5秒)</button>
+      
+      <!-- 动态内容容器 -->
+      <div id="dynamicContainer" style="min-height: 50px; margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+        <span style="font-size: 11px; color: rgba(255,255,255,0.6);">等待动态内容...</span>
+      </div>
+    </div>
   </div>
   
   <script>
@@ -448,6 +462,40 @@
       if (result !== null) {
         alert(`你输入了: ${result}`);
       }
+    });
+    
+    // Phase 2.3: 延迟加载逻辑
+    document.getElementById('loadDelayedBtn').addEventListener('click', () => {
+      const container = document.getElementById('dynamicContainer');
+      container.innerHTML = '<span style="font-size: 11px; color: rgba(255,255,255,0.6);">加载中...</span>';
+      
+      setTimeout(() => {
+        container.innerHTML = `
+          <div id="delayedElement" role="status" aria-label="Delayed content loaded" style="padding: 5px; background: #4CAF50; border-radius: 3px;">
+            <span style="font-size: 11px;">✅ 延迟元素已加载 (2秒)</span>
+          </div>
+        `;
+        console.log('[Delayed Load] Element loaded after 2s');
+      }, 2000);
+    });
+    
+    document.getElementById('loadSlowBtn').addEventListener('click', () => {
+      const container = document.getElementById('dynamicContainer');
+      container.innerHTML = '<span style="font-size: 11px; color: rgba(255,255,255,0.6);">慢速加载中...</span>';
+      
+      setTimeout(() => {
+        container.innerHTML = `
+          <div id="slowElement" data-testid="slow-loaded" style="padding: 5px; background: #2196F3; border-radius: 3px;">
+            <button id="slowButton" class="btn" style="font-size: 11px; padding: 3px 8px;">慢速加载的按钮 (5秒)</button>
+          </div>
+        `;
+        console.log('[Slow Load] Element loaded after 5s');
+        
+        // 为动态按钮添加事件
+        document.getElementById('slowButton').addEventListener('click', () => {
+          alert('慢速加载的按钮被点击了！');
+        });
+      }, 5000);
     });
   </script>
   

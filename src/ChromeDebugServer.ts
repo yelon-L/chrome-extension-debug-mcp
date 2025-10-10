@@ -24,6 +24,7 @@ import { EvaluationHandler } from './handlers/EvaluationHandler.js';
 import { ExtensionHandler } from './handlers/ExtensionHandler.js';
 import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
 import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandler.js';
+import { WaitHelper } from './utils/WaitHelper.js';
 import { McpContext } from './context/McpContext.js';
 
 // Import types
@@ -78,6 +79,9 @@ export class ChromeDebugServer {
   
   // Phase 2.2: Advanced Interaction
   public advancedInteractionHandler: AdvancedInteractionHandler;
+  
+  // Phase 2.3: Smart Wait
+  public waitHelper: WaitHelper;
 
   constructor() {
     // Initialize MCP server with basic configuration
@@ -109,6 +113,9 @@ export class ChromeDebugServer {
     
     // Phase 2.2: Initialize Advanced Interaction Handler
     this.advancedInteractionHandler = new AdvancedInteractionHandler(this.pageManager, this.mcpContext);
+    
+    // Phase 2.3: Initialize Wait Helper
+    this.waitHelper = new WaitHelper(this.pageManager, this.mcpContext);
 
     this.setupToolHandlers();
     this.server.onerror = (error) => console.error('[MCP Error]', error);
@@ -751,6 +758,11 @@ export class ChromeDebugServer {
             return await this.handleUploadFile(args as any);
           case 'handle_dialog':
             return await this.handleDialog(args as any);
+          // Phase 2.3: Smart Wait Tools
+          case 'wait_for_element':
+            return await this.handleWaitForElement(args as any);
+          case 'wait_for_extension_ready':
+            return await this.handleWaitForExtensionReady(args as any);
           // Quick Debug Tools
           case 'quick_extension_debug':
             return await this.handleQuickExtensionDebug(args as any);
@@ -1070,6 +1082,28 @@ export class ChromeDebugServer {
 
   public async handleDialog(args: any) {
     const result = await this.advancedInteractionHandler.handleDialog(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  // ===== Phase 2.3: Smart Wait Handlers =====
+
+  public async handleWaitForElement(args: any) {
+    const result = await this.waitHelper.waitForElement(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify({
+        success: result.success,
+        strategy: result.strategy,
+        duration: result.duration,
+        timedOut: result.timedOut,
+        error: result.error
+      }, null, 2) }]
+    };
+  }
+
+  public async handleWaitForExtensionReady(args: any) {
+    const result = await this.waitHelper.waitForExtensionReady(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
