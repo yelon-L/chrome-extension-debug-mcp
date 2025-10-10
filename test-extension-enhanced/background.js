@@ -585,5 +585,105 @@ setInterval(async () => {
   }
 }, 60000);
 
-console.log('[Enhanced Background] ✅ v4.1初始化完成 - Week 1-4全功能 + Phase 1性能测试就绪');
-console.log('[Network Test] 🌐 网络测试增强已启用 - 每30/45/60秒发送测试请求');
+// ===== 手动网络测试触发器 =====
+// 监听来自popup/content的网络测试请求
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'triggerNetworkTest') {
+    console.log('[Network Test] 🎯 手动触发网络测试');
+    performComprehensiveNetworkTest().then(() => {
+      sendResponse({ success: true, message: 'Network test completed' });
+    }).catch(error => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true; // 保持消息通道开放
+  }
+});
+
+// 综合网络测试函数
+async function performComprehensiveNetworkTest() {
+  console.log('[Network Test] 🚀 开始综合网络测试...');
+  
+  try {
+    // 1. 多种资源类型测试
+    const tests = [
+      // JSON API
+      { url: 'https://httpbin.org/json', type: 'json', method: 'GET' },
+      // HTML
+      { url: 'https://httpbin.org/html', type: 'html', method: 'GET' },
+      // XML
+      { url: 'https://httpbin.org/xml', type: 'xml', method: 'GET' },
+      // 图片资源
+      { url: 'https://httpbin.org/image/png', type: 'image', method: 'GET' },
+      { url: 'https://httpbin.org/image/jpeg', type: 'image', method: 'GET' },
+      // CSS
+      { url: 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css', type: 'stylesheet', method: 'GET' },
+      // JavaScript
+      { url: 'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js', type: 'script', method: 'GET' },
+      // POST请求
+      { url: 'https://httpbin.org/post', type: 'json', method: 'POST', body: { test: 'data', timestamp: Date.now() } },
+      // PUT请求
+      { url: 'https://httpbin.org/put', type: 'json', method: 'PUT', body: { updated: true } },
+      // DELETE请求
+      { url: 'https://httpbin.org/delete', type: 'json', method: 'DELETE' },
+      // 状态码测试
+      { url: 'https://httpbin.org/status/200', type: 'status', method: 'GET' },
+      { url: 'https://httpbin.org/status/404', type: 'status', method: 'GET' },
+      // 延迟测试
+      { url: 'https://httpbin.org/delay/1', type: 'delayed', method: 'GET' },
+    ];
+    
+    const results = [];
+    
+    for (const test of tests) {
+      try {
+        const startTime = Date.now();
+        const options = {
+          method: test.method,
+          headers: {
+            'X-Test-Type': test.type,
+            'X-Extension-Test': 'true'
+          }
+        };
+        
+        if (test.body) {
+          options.headers['Content-Type'] = 'application/json';
+          options.body = JSON.stringify(test.body);
+        }
+        
+        const response = await fetch(test.url, options);
+        const duration = Date.now() - startTime;
+        
+        results.push({
+          url: test.url,
+          type: test.type,
+          method: test.method,
+          status: response.status,
+          duration,
+          size: response.headers.get('content-length') || 'unknown'
+        });
+        
+        console.log(`[Network Test] ✅ ${test.method} ${test.type}: ${response.status} (${duration}ms)`);
+      } catch (error) {
+        console.error(`[Network Test] ❌ ${test.method} ${test.type} 失败:`, error.message);
+      }
+      
+      // 间隔一下，避免请求过快
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log('[Network Test] 📊 测试完成，共', results.length, '个请求');
+    return results;
+    
+  } catch (error) {
+    console.error('[Network Test] ❌ 综合测试失败:', error);
+    throw error;
+  }
+}
+
+// 立即执行一次综合测试（用于初始化验证）
+setTimeout(() => {
+  performComprehensiveNetworkTest().catch(console.error);
+}, 3000);
+
+console.log('[Enhanced Background] ✅ v4.2初始化完成 - Week 1-4全功能 + Phase 1.3网络监控测试就绪');
+console.log('[Network Test] 🌐 网络测试增强已启用 - 支持13种请求类型，可手动触发');

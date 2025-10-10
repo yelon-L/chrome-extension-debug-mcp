@@ -263,6 +263,20 @@ export declare class ExtensionHandler {
      */
     quickPerformanceCheck(args: any): Promise<import("./QuickDebugHandler.js").QuickPerformanceResult>;
     /**
+     * Phase 1.3: 列出扩展网络请求（带过滤和分页）
+     */
+    listExtensionRequests(args: any): {
+        requests: import("../types/network-types.js").NetworkRequest[];
+        total: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+    };
+    /**
+     * Phase 1.3: 获取请求详情
+     */
+    getExtensionRequestDetails(args: any): import("../types/network-types.js").NetworkRequest;
+    /**
      * 导出网络活动为HAR格式
      */
     exportExtensionNetworkHAR(args: any): Promise<{
@@ -270,5 +284,54 @@ export declare class ExtensionHandler {
         savedPath?: string;
         summary: any;
     }>;
+    /**
+     * Phase 1.3: 网络模式分析和建议
+     */
+    analyzeExtensionNetwork(args: any): {
+        patterns: {
+            frequentDomains: Array<{
+                domain: string;
+                count: number;
+                percentage: number;
+            }>;
+            resourceTypeDistribution: Array<{
+                type: string;
+                count: number;
+                size: number;
+                percentage: number;
+            }>;
+            methodDistribution: Array<{
+                method: string;
+                count: number;
+            }>;
+            statusDistribution: Array<{
+                status: number;
+                count: number;
+            }>;
+            timelineAnalysis: {
+                peakTime: string;
+                avgRequestsPerMinute: number;
+                busiestPeriod: {
+                    start: number;
+                    end: number;
+                    count: number;
+                };
+            };
+        };
+        issues: Array<{
+            type: "performance" | "reliability" | "security" | "best-practice";
+            severity: "high" | "medium" | "low";
+            description: string;
+            affected: number;
+            recommendation: string;
+        }>;
+        recommendations: string[];
+        score: {
+            performance: number;
+            reliability: number;
+            efficiency: number;
+            overall: number;
+        };
+    };
 }
 //# sourceMappingURL=ExtensionHandler.d.ts.map

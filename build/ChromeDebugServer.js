@@ -648,6 +648,15 @@ export class ChromeDebugServer {
                         return await this.handleTrackExtensionAPICalls(args);
                     case 'track_extension_network':
                         return await this.handleTrackExtensionNetwork(args);
+                    // Phase 1.3: Network Monitoring Enhancement (4 tools)
+                    case 'list_extension_requests':
+                        return await this.handleListExtensionRequests(args);
+                    case 'get_extension_request_details':
+                        return await this.handleGetExtensionRequestDetails(args);
+                    case 'export_extension_network_har':
+                        return await this.handleExportExtensionNetworkHAR(args);
+                    case 'analyze_extension_network':
+                        return await this.handleAnalyzeExtensionNetwork(args);
                     case 'analyze_extension_performance':
                         return await this.handleAnalyzeExtensionPerformance(args);
                     case 'performance_get_insights':
@@ -668,9 +677,6 @@ export class ChromeDebugServer {
                         return await this.handleQuickExtensionDebug(args);
                     case 'quick_performance_check':
                         return await this.handleQuickPerformanceCheck(args);
-                    // HAR Export Tool
-                    case 'export_extension_network_har':
-                        return await this.handleExportExtensionNetworkHAR(args);
                     default:
                         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
                 }
@@ -815,6 +821,31 @@ export class ChromeDebugServer {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         };
     }
+    // Phase 1.3: Network Monitoring Enhancement Handlers
+    async handleListExtensionRequests(args) {
+        const result = this.extensionHandler.listExtensionRequests(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleGetExtensionRequestDetails(args) {
+        const result = this.extensionHandler.getExtensionRequestDetails(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleExportExtensionNetworkHAR(args) {
+        const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleAnalyzeExtensionNetwork(args) {
+        const result = this.extensionHandler.analyzeExtensionNetwork(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
     async handleAnalyzeExtensionPerformance(args) {
         const result = await this.extensionHandler.analyzeExtensionPerformance(args);
         return {
@@ -861,12 +892,6 @@ export class ChromeDebugServer {
     }
     async handleQuickPerformanceCheck(args) {
         const result = await this.extensionHandler.quickPerformanceCheck(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
-    }
-    async handleExportExtensionNetworkHAR(args) {
-        const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
         return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         };

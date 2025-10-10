@@ -10,7 +10,7 @@
  */
 import type { ChromeManager } from '../../managers/ChromeManager.js';
 import type { PageManager } from '../../managers/PageManager.js';
-import type { NetworkAnalysis, TrackExtensionNetworkArgs, NetworkMonitoringStats } from '../../types/network-types.js';
+import type { NetworkRequest, NetworkAnalysis, TrackExtensionNetworkArgs, NetworkMonitoringStats } from '../../types/network-types.js';
 export declare class ExtensionNetworkMonitor {
     private chromeManager;
     private pageManager;
@@ -95,7 +95,40 @@ export declare class ExtensionNetworkMonitor {
      */
     clearMonitoringData(extensionId: string): void;
     /**
-     * 导出扩展网络活动为HAR格式
+     * Phase 1.3: 列出扩展网络请求（带过滤和分页）
+     */
+    listRequests(args: {
+        extensionId: string;
+        filters?: {
+            method?: string[];
+            resourceType?: string[];
+            status?: number[];
+            minDuration?: number;
+            maxDuration?: number;
+            urlPattern?: string;
+        };
+        pagination?: {
+            page: number;
+            pageSize: number;
+        };
+        sortBy?: 'time' | 'duration' | 'size';
+        sortOrder?: 'asc' | 'desc';
+    }): {
+        requests: NetworkRequest[];
+        total: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+    };
+    /**
+     * Phase 1.3: 获取请求详情
+     */
+    getRequestDetails(args: {
+        extensionId: string;
+        requestId: string;
+    }): NetworkRequest | null;
+    /**
+     * Phase 1.3: 导出扩展网络活动为HAR格式
      */
     exportHAR(args: {
         extensionId: string;
@@ -108,5 +141,56 @@ export declare class ExtensionNetworkMonitor {
         savedPath?: string;
         summary: any;
     }>;
+    /**
+     * Phase 1.3: 网络模式分析和建议
+     */
+    analyzeNetworkPattern(args: {
+        extensionId: string;
+    }): {
+        patterns: {
+            frequentDomains: Array<{
+                domain: string;
+                count: number;
+                percentage: number;
+            }>;
+            resourceTypeDistribution: Array<{
+                type: string;
+                count: number;
+                size: number;
+                percentage: number;
+            }>;
+            methodDistribution: Array<{
+                method: string;
+                count: number;
+            }>;
+            statusDistribution: Array<{
+                status: number;
+                count: number;
+            }>;
+            timelineAnalysis: {
+                peakTime: string;
+                avgRequestsPerMinute: number;
+                busiestPeriod: {
+                    start: number;
+                    end: number;
+                    count: number;
+                };
+            };
+        };
+        issues: Array<{
+            type: 'performance' | 'reliability' | 'security' | 'best-practice';
+            severity: 'high' | 'medium' | 'low';
+            description: string;
+            affected: number;
+            recommendation: string;
+        }>;
+        recommendations: string[];
+        score: {
+            performance: number;
+            reliability: number;
+            efficiency: number;
+            overall: number;
+        };
+    };
 }
 //# sourceMappingURL=ExtensionNetworkMonitor.d.ts.map

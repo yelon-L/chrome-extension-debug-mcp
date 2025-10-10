@@ -157,6 +157,30 @@ export declare class ChromeDebugServer {
             text: string;
         }[];
     }>;
+    handleListExtensionRequests(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleGetExtensionRequestDetails(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleExportExtensionNetworkHAR(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleAnalyzeExtensionNetwork(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
     handleAnalyzeExtensionPerformance(args: any): Promise<{
         content: {
             type: string;
@@ -212,12 +236,6 @@ export declare class ChromeDebugServer {
         }[];
     }>;
     handleQuickPerformanceCheck(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleExportExtensionNetworkHAR(args: any): Promise<{
         content: {
             type: string;
             text: string;

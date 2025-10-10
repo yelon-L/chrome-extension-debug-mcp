@@ -23,6 +23,7 @@ export interface NetworkRequest {
     requestHeaders: Record<string, string>;
     responseHeaders?: Record<string, string>;
     statusCode?: number;
+    status?: number;
     statusText?: string;
     timing: {
         startTime: number;

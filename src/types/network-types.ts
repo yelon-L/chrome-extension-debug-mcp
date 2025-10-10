@@ -24,6 +24,7 @@ export interface NetworkRequest {
   requestHeaders: Record<string, string>;
   responseHeaders?: Record<string, string>;
   statusCode?: number;
+  status?: number;                // 别名，与statusCode相同
   statusText?: string;
   timing: {
     startTime: number;

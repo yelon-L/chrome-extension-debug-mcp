@@ -438,9 +438,30 @@ export class ExtensionHandler {
   }
 
   /**
+   * Phase 1.3: 列出扩展网络请求（带过滤和分页）
+   */
+  listExtensionRequests(args: any) {
+    return this.networkMonitor.listRequests(args);
+  }
+
+  /**
+   * Phase 1.3: 获取请求详情
+   */
+  getExtensionRequestDetails(args: any) {
+    return this.networkMonitor.getRequestDetails(args);
+  }
+
+  /**
    * 导出网络活动为HAR格式
    */
   async exportExtensionNetworkHAR(args: any) {
     return await this.networkMonitor.exportHAR(args);
+  }
+
+  /**
+   * Phase 1.3: 网络模式分析和建议
+   */
+  analyzeExtensionNetwork(args: any) {
+    return this.networkMonitor.analyzeNetworkPattern(args);
   }
 }

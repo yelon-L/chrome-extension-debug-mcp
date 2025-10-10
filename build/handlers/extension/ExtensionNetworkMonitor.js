@@ -559,7 +559,91 @@ export class ExtensionNetworkMonitor {
         console.log(`[ExtensionNetworkMonitor] 已清理监控数据: ${extensionId}`);
     }
     /**
-     * 导出扩展网络活动为HAR格式
+     * Phase 1.3: 列出扩展网络请求（带过滤和分页）
+     */
+    listRequests(args) {
+        console.log(`[ExtensionNetworkMonitor] 列出请求: ${args.extensionId}`);
+        let requests = this.requests.get(args.extensionId) || [];
+        // 1. 应用过滤器
+        if (args.filters) {
+            const f = args.filters;
+            requests = requests.filter(req => {
+                // Method过滤
+                if (f.method && f.method.length > 0 && !f.method.includes(req.method)) {
+                    return false;
+                }
+                // ResourceType过滤
+                if (f.resourceType && f.resourceType.length > 0 && !f.resourceType.includes(req.resourceType)) {
+                    return false;
+                }
+                // Status过滤
+                if (f.status && f.status.length > 0 && req.status && !f.status.includes(req.status)) {
+                    return false;
+                }
+                // Duration过滤
+                if (f.minDuration !== undefined && req.timing.duration < f.minDuration) {
+                    return false;
+                }
+                if (f.maxDuration !== undefined && req.timing.duration > f.maxDuration) {
+                    return false;
+                }
+                // URL pattern过滤
+                if (f.urlPattern && !req.url.includes(f.urlPattern)) {
+                    return false;
+                }
+                return true;
+            });
+        }
+        // 2. 排序
+        const sortBy = args.sortBy || 'time';
+        const sortOrder = args.sortOrder || 'desc';
+        requests.sort((a, b) => {
+            let compareValue = 0;
+            if (sortBy === 'time') {
+                compareValue = a.timing.startTime - b.timing.startTime;
+            }
+            else if (sortBy === 'duration') {
+                compareValue = a.timing.duration - b.timing.duration;
+            }
+            else if (sortBy === 'size') {
+                const sizeA = (a.size.responseBodySize || 0) + (a.size.responseHeadersSize || 0);
+                const sizeB = (b.size.responseBodySize || 0) + (b.size.responseHeadersSize || 0);
+                compareValue = sizeA - sizeB;
+            }
+            return sortOrder === 'asc' ? compareValue : -compareValue;
+        });
+        // 3. 分页
+        const page = args.pagination?.page || 1;
+        const pageSize = args.pagination?.pageSize || 50;
+        const total = requests.length;
+        const totalPages = Math.ceil(total / pageSize);
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, total);
+        const paginatedRequests = requests.slice(startIndex, endIndex);
+        console.log(`[ExtensionNetworkMonitor] 返回第${page}页，共${totalPages}页，${total}条记录`);
+        return {
+            requests: paginatedRequests,
+            total,
+            page,
+            pageSize,
+            totalPages
+        };
+    }
+    /**
+     * Phase 1.3: 获取请求详情
+     */
+    getRequestDetails(args) {
+        console.log(`[ExtensionNetworkMonitor] 获取请求详情: ${args.requestId}`);
+        const requests = this.requests.get(args.extensionId) || [];
+        const request = requests.find(r => r.id === args.requestId);
+        if (!request) {
+            console.log(`[ExtensionNetworkMonitor] 未找到请求: ${args.requestId}`);
+            return null;
+        }
+        return request;
+    }
+    /**
+     * Phase 1.3: 导出扩展网络活动为HAR格式
      */
     async exportHAR(args) {
         console.log(`[ExtensionNetworkMonitor] 开始导出HAR: ${args.extensionId}`);
@@ -596,6 +680,215 @@ export class ExtensionNetworkMonitor {
             console.error('[ExtensionNetworkMonitor] HAR导出失败:', error);
             throw new Error(`HAR导出失败: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+    /**
+     * Phase 1.3: 网络模式分析和建议
+     */
+    analyzeNetworkPattern(args) {
+        console.log(`[ExtensionNetworkMonitor] 分析网络模式: ${args.extensionId}`);
+        const requests = this.requests.get(args.extensionId) || [];
+        if (requests.length === 0) {
+            return {
+                patterns: {
+                    frequentDomains: [],
+                    resourceTypeDistribution: [],
+                    methodDistribution: [],
+                    statusDistribution: [],
+                    timelineAnalysis: {
+                        peakTime: 'N/A',
+                        avgRequestsPerMinute: 0,
+                        busiestPeriod: { start: 0, end: 0, count: 0 }
+                    }
+                },
+                issues: [],
+                recommendations: ['暂无网络请求数据，请先运行网络监控'],
+                score: {
+                    performance: 100,
+                    reliability: 100,
+                    efficiency: 100,
+                    overall: 100
+                }
+            };
+        }
+        // 1. 分析频繁访问的域名
+        const domainMap = new Map();
+        requests.forEach(req => {
+            try {
+                const url = new URL(req.url);
+                const domain = url.hostname;
+                domainMap.set(domain, (domainMap.get(domain) || 0) + 1);
+            }
+            catch (e) {
+                // Invalid URL
+            }
+        });
+        const frequentDomains = Array.from(domainMap.entries())
+            .map(([domain, count]) => ({
+            domain,
+            count,
+            percentage: Math.round((count / requests.length) * 100)
+        }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+        // 2. 资源类型分布
+        const typeMap = new Map();
+        requests.forEach(req => {
+            const type = req.resourceType;
+            const existing = typeMap.get(type) || { count: 0, size: 0 };
+            const size = (req.size.responseBodySize || 0) + (req.size.responseHeadersSize || 0);
+            typeMap.set(type, {
+                count: existing.count + 1,
+                size: existing.size + size
+            });
+        });
+        const resourceTypeDistribution = Array.from(typeMap.entries())
+            .map(([type, data]) => ({
+            type,
+            count: data.count,
+            size: data.size,
+            percentage: Math.round((data.count / requests.length) * 100)
+        }))
+            .sort((a, b) => b.count - a.count);
+        // 3. HTTP方法分布
+        const methodMap = new Map();
+        requests.forEach(req => {
+            methodMap.set(req.method, (methodMap.get(req.method) || 0) + 1);
+        });
+        const methodDistribution = Array.from(methodMap.entries())
+            .map(([method, count]) => ({ method, count }))
+            .sort((a, b) => b.count - a.count);
+        // 4. 状态码分布
+        const statusMap = new Map();
+        requests.forEach(req => {
+            if (req.status) {
+                statusMap.set(req.status, (statusMap.get(req.status) || 0) + 1);
+            }
+        });
+        const statusDistribution = Array.from(statusMap.entries())
+            .map(([status, count]) => ({ status, count }))
+            .sort((a, b) => b.count - a.count);
+        // 5. 时间线分析
+        const startTime = Math.min(...requests.map(r => r.timing.startTime));
+        const endTime = Math.max(...requests.map(r => r.timing.endTime));
+        const durationMinutes = (endTime - startTime) / 60000;
+        const avgRequestsPerMinute = durationMinutes > 0 ? Math.round(requests.length / durationMinutes) : 0;
+        // 找出最繁忙的时间段（1分钟窗口）
+        const minuteBuckets = new Map();
+        requests.forEach(req => {
+            const minute = Math.floor(req.timing.startTime / 60000) * 60000;
+            minuteBuckets.set(minute, (minuteBuckets.get(minute) || 0) + 1);
+        });
+        let busiestPeriod = { start: 0, end: 0, count: 0 };
+        minuteBuckets.forEach((count, minute) => {
+            if (count > busiestPeriod.count) {
+                busiestPeriod = { start: minute, end: minute + 60000, count };
+            }
+        });
+        const peakTime = busiestPeriod.start > 0
+            ? new Date(busiestPeriod.start).toLocaleTimeString()
+            : 'N/A';
+        // 6. 识别问题和生成建议
+        const issues = [];
+        const recommendations = [];
+        // 性能问题检测
+        const slowRequests = requests.filter(r => r.timing.duration > 3000);
+        if (slowRequests.length > 0) {
+            issues.push({
+                type: 'performance',
+                severity: slowRequests.length > 5 ? 'high' : 'medium',
+                description: `发现${slowRequests.length}个慢请求（>3秒）`,
+                affected: slowRequests.length,
+                recommendation: '考虑优化慢请求，使用缓存或批量处理'
+            });
+            recommendations.push('🔧 优化慢请求：考虑实施请求缓存、数据预取或批量API调用');
+        }
+        // 大请求检测
+        const largeRequests = requests.filter(r => {
+            const size = (r.size.responseBodySize || 0) + (r.size.responseHeadersSize || 0);
+            return size > 1024 * 1024; // >1MB
+        });
+        if (largeRequests.length > 0) {
+            issues.push({
+                type: 'performance',
+                severity: 'medium',
+                description: `发现${largeRequests.length}个大响应（>1MB）`,
+                affected: largeRequests.length,
+                recommendation: '考虑使用数据压缩或分页加载'
+            });
+            recommendations.push('📦 优化数据传输：对大响应启用gzip压缩或实施增量加载');
+        }
+        // 失败请求检测
+        const failedRequests = requests.filter(r => r.failed || (r.status && r.status >= 400));
+        if (failedRequests.length > 0) {
+            issues.push({
+                type: 'reliability',
+                severity: failedRequests.length > 3 ? 'high' : 'medium',
+                description: `发现${failedRequests.length}个失败请求`,
+                affected: failedRequests.length,
+                recommendation: '检查错误处理逻辑，实施重试机制'
+            });
+            recommendations.push('🛡️ 增强可靠性：为失败的请求添加重试逻辑和降级方案');
+        }
+        // 重复请求检测
+        const urlMap = new Map();
+        requests.forEach(r => urlMap.set(r.url, (urlMap.get(r.url) || 0) + 1));
+        const duplicateUrls = Array.from(urlMap.entries()).filter(([_, count]) => count > 3);
+        if (duplicateUrls.length > 0) {
+            issues.push({
+                type: 'efficiency',
+                severity: 'medium',
+                description: `发现${duplicateUrls.length}个URL被重复请求多次`,
+                affected: duplicateUrls.reduce((sum, [_, count]) => sum + count, 0),
+                recommendation: '实施请求去重和结果缓存'
+            });
+            recommendations.push('♻️ 减少重复请求：实施请求缓存和去重机制');
+        }
+        // HTTP/HTTPS混用检测
+        const httpRequests = requests.filter(r => r.url.startsWith('http://'));
+        if (httpRequests.length > 0) {
+            issues.push({
+                type: 'security',
+                severity: 'high',
+                description: `发现${httpRequests.length}个非HTTPS请求`,
+                affected: httpRequests.length,
+                recommendation: '所有请求应使用HTTPS协议'
+            });
+            recommendations.push('🔒 加强安全性：将所有HTTP请求升级到HTTPS');
+        }
+        // 计算评分
+        const performanceScore = Math.max(0, 100 - (slowRequests.length * 5) - (largeRequests.length * 3));
+        const reliabilityScore = Math.max(0, 100 - (failedRequests.length * 10));
+        const efficiencyScore = Math.max(0, 100 - (duplicateUrls.length * 5));
+        const overallScore = Math.round((performanceScore + reliabilityScore + efficiencyScore) / 3);
+        // 通用建议
+        if (recommendations.length === 0) {
+            recommendations.push('✅ 网络性能表现良好，继续保持！');
+        }
+        if (requests.length > 100) {
+            recommendations.push('📊 请求量较大，考虑实施请求合并和批处理策略');
+        }
+        console.log(`[ExtensionNetworkMonitor] 分析完成，发现${issues.length}个问题，评分${overallScore}/100`);
+        return {
+            patterns: {
+                frequentDomains,
+                resourceTypeDistribution,
+                methodDistribution,
+                statusDistribution,
+                timelineAnalysis: {
+                    peakTime,
+                    avgRequestsPerMinute,
+                    busiestPeriod
+                }
+            },
+            issues,
+            recommendations,
+            score: {
+                performance: performanceScore,
+                reliability: reliabilityScore,
+                efficiency: efficiencyScore,
+                overall: overallScore
+            }
+        };
     }
 }
 //# sourceMappingURL=ExtensionNetworkMonitor.js.map
