@@ -1,38 +1,38 @@
 /**
- * 快捷调试工具定义
+ * Quick Debug Tools Definitions
  * 
- * 提供一键式扩展调试和性能检测
+ * Provides one-click extension debugging and performance checking
  */
 
 export const quickDebugTools = [
   {
     name: 'quick_extension_debug',
-    description: '一键扩展快速调试（组合工具）\n\n' +
-      '自动执行：\n' +
-      '1. 列出扩展信息\n' +
-      '2. 获取扩展日志（最新50条）\n' +
-      '3. 检查内容脚本状态\n' +
-      '4. 检查扩展存储\n\n' +
-      '用途：快速了解扩展当前状态，适合快速诊断问题\n\n' +
-      '提示：这个工具会自动调用多个工具，节省手动操作时间',
+    description: 'Quick Extension Debug (Combo Tool)\n\n' +
+      'Automatically executes:\n' +
+      '1. List extension information\n' +
+      '2. Get extension logs (latest 50)\n' +
+      '3. Check content script status\n' +
+      '4. Check extension storage\n\n' +
+      'Purpose: Quickly understand extension current state, suitable for rapid issue diagnosis\n\n' +
+      'Tip: This tool automatically calls multiple tools, saving manual operation time',
     inputSchema: {
       type: 'object',
       properties: {
         extensionId: { 
           type: 'string', 
-          description: '扩展ID（必需）' 
+          description: 'Extension ID (required)' 
         },
         includeStorage: { 
           type: 'boolean', 
-          description: '是否包含存储检查（默认true）' 
+          description: 'Whether to include storage check (default true)' 
         },
         includeLogs: { 
           type: 'boolean', 
-          description: '是否包含日志（默认true）' 
+          description: 'Whether to include logs (default true)' 
         },
         includeContentScript: { 
           type: 'boolean', 
-          description: '是否包含内容脚本检查（默认true）' 
+          description: 'Whether to include content script check (default true)' 
         }
       },
       required: ['extensionId']
@@ -40,23 +40,23 @@ export const quickDebugTools = [
   },
   {
     name: 'quick_performance_check',
-    description: '一键性能快速检测（组合工具）\n\n' +
-      '自动执行：\n' +
-      '1. 分析扩展性能影响（2秒）\n' +
-      '2. 监控网络请求（10秒）\n' +
-      '3. 生成性能摘要报告\n\n' +
-      '用途：快速评估扩展性能表现，包含Core Web Vitals\n\n' +
-      '提示：完整测试约12秒，如需更详细分析请使用analyze_extension_performance',
+    description: 'Quick Performance Check (Combo Tool)\n\n' +
+      'Automatically executes:\n' +
+      '1. Analyze extension performance impact (2s)\n' +
+      '2. Monitor network requests (10s)\n' +
+      '3. Generate performance summary report\n\n' +
+      'Purpose: Quickly assess extension performance, includes Core Web Vitals\n\n' +
+      'Tip: Complete test takes ~12s, use analyze_extension_performance for detailed analysis',
     inputSchema: {
       type: 'object',
       properties: {
         extensionId: { 
           type: 'string',
-          description: '扩展ID（必需）'
+          description: 'Extension ID (required)'
         },
         testUrl: { 
           type: 'string', 
-          description: '测试页面URL（默认https://example.com）' 
+          description: 'Test page URL (default https://example.com)' 
         }
       },
       required: ['extensionId']
