@@ -22,9 +22,14 @@ import { McpContext } from './context/McpContext.js';
 import { ExtensionResponse } from './utils/ExtensionResponse.js';
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
+import { SuggestionEngine } from './utils/SuggestionEngine.js';
+import { MetricsCollector } from './utils/MetricsCollector.js';
+import { MetricsPersistence } from './utils/MetricsPersistence.js';
 // Import tool definitions
 import { quickDebugTools } from './tools/quick-debug-tools.js';
 import { harTools } from './tools/har-tools.js';
+// Import configurations
+import { getToolConfig } from './configs/tool-response-configs.js';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[ChromeDebugServer]', ...args);
 /**
@@ -53,6 +58,10 @@ export class ChromeDebugServer {
     waitHelper;
     // Phase 3: Developer Tools
     developerToolsHandler;
+    // VIP: Suggestion Engine & Metrics
+    suggestionEngine;
+    metricsCollector;
+    metricsPersistence;
     constructor() {
         // Initialize MCP server with basic configuration
         this.server = new Server({
@@ -80,6 +89,10 @@ export class ChromeDebugServer {
         this.waitHelper = new WaitHelper(this.pageManager, this.mcpContext);
         // Phase 3: Initialize Developer Tools Handler
         this.developerToolsHandler = new DeveloperToolsHandler(this.chromeManager, this.pageManager);
+        // VIP: Initialize Suggestion Engine & Metrics
+        this.suggestionEngine = new SuggestionEngine();
+        this.metricsCollector = new MetricsCollector();
+        this.metricsPersistence = new MetricsPersistence();
         this.setupToolHandlers();
         this.server.onerror = (error) => console.error('[MCP Error]', error);
     }
@@ -788,9 +801,7 @@ export class ChromeDebugServer {
         if (args?.clear) {
             this.chromeManager.clearConsoleLogs();
         }
-        return {
-            content: [{ type: 'text', text: logs.join('\n') || 'No console logs available' }],
-        };
+        return await this.buildToolResponse('get_console_logs', logs, 'list');
     }
     async handleEvaluate(args) {
         return await this.evaluationHandler.evaluate(args);
@@ -806,7 +817,7 @@ export class ChromeDebugServer {
     }
     async handleListTabs() {
         const tabs = await this.pageManager.listTabs();
-        return { content: [{ type: 'text', text: JSON.stringify(tabs) }] };
+        return await this.buildToolResponse('list_tabs', tabs, 'list');
     }
     async handleNewTab(args) {
         const result = await this.pageManager.createNewTab(args.url);
@@ -840,9 +851,7 @@ export class ChromeDebugServer {
     }
     async handleGetExtensionLogs(args) {
         const result = await this.extensionHandler.getExtensionLogs(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('get_extension_logs', result, 'list', { extensionId: args.extensionId });
     }
     async handleInjectContentScript(args) {
         const result = await this.extensionHandler.injectContentScript(args);
@@ -852,15 +861,11 @@ export class ChromeDebugServer {
     }
     async handleContentScriptStatus(args) {
         const result = await this.extensionHandler.contentScriptStatus(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('content_script_status', result, 'detailed', { extensionId: args.extensionId });
     }
     async handleListExtensionContexts(args) {
         const result = await this.extensionHandler.listExtensionContexts(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('list_extension_contexts', result, 'list', { extensionId: args.extensionId });
     }
     async handleSwitchExtensionContext(args) {
         const result = await this.extensionHandler.switchExtensionContext(args);
@@ -870,28 +875,20 @@ export class ChromeDebugServer {
     }
     async handleInspectExtensionStorage(args) {
         const result = await this.extensionHandler.inspectExtensionStorage(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('inspect_extension_storage', result, 'detailed', { extensionId: args.extensionId });
     }
     // ===== Week 3 高级调试功能处理器 =====
     async handleMonitorExtensionMessages(args) {
         const result = await this.extensionHandler.monitorExtensionMessages(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('monitor_extension_messages', result, 'list', { extensionId: args.extensionId });
     }
     async handleTrackExtensionAPICalls(args) {
         const result = await this.extensionHandler.trackExtensionAPICalls(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('track_extension_api_calls', result, 'list', { extensionId: args.extensionId });
     }
     async handleTestExtensionOnMultiplePages(args) {
         const result = await this.extensionHandler.testExtensionOnMultiplePages(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return await this.buildToolResponse('test_extension_on_multiple_pages', result, 'analysis', { extensionId: args.extensionId });
     }
     // ===== Phase 1 性能分析功能处理器 =====
     async handleTrackExtensionNetwork(args) {
@@ -903,15 +900,11 @@ export class ChromeDebugServer {
     // Phase 1.3: Network Monitoring Enhancement Handlers
     async handleListExtensionRequests(args) {
         const result = this.extensionHandler.listExtensionRequests(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('list_extension_requests', result, 'list', { extensionId: args.extensionId });
     }
     async handleGetExtensionRequestDetails(args) {
         const result = this.extensionHandler.getExtensionRequestDetails(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('get_extension_request_details', result, 'detailed', { extensionId: args.extensionId });
     }
     async handleExportExtensionNetworkHAR(args) {
         const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
@@ -933,15 +926,11 @@ export class ChromeDebugServer {
     }
     async handlePerformanceGetInsights(args) {
         const result = await this.extensionHandler.getPerformanceInsight(args.insightName);
-        return {
-            content: [{ type: 'text', text: result }]
-        };
+        return await this.buildToolResponse('performance_get_insights', result, 'detailed');
     }
     async handlePerformanceListInsights(args) {
         const result = await this.extensionHandler.listPerformanceInsights();
-        return {
-            content: [{ type: 'text', text: JSON.stringify({ insights: result }, null, 2) }]
-        };
+        return await this.buildToolResponse('performance_list_insights', { insights: result }, 'list');
     }
     // ===== Phase 1.2: Emulation工具处理器 =====
     async handleEmulateCPU(args) {
@@ -958,16 +947,12 @@ export class ChromeDebugServer {
     }
     async handleTestExtensionConditions(args) {
         const result = await this.extensionHandler.testUnderConditions(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('test_extension_conditions', result, 'analysis', { extensionId: args.extensionId });
     }
     // ===== Phase 2.1: DOM Snapshot & UID Locator Handlers =====
     async handleTakeSnapshot(args) {
         const result = await this.uidHandler.takeSnapshot(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('take_snapshot', result, 'detailed');
     }
     async handleClickByUid(args) {
         const result = await this.uidHandler.clickByUid(args);
@@ -1033,41 +1018,130 @@ export class ChromeDebugServer {
     }
     async handleWaitForExtensionReady(args) {
         const result = await this.waitHelper.waitForExtensionReady(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('wait_for_extension_ready', result, 'detailed', { extensionId: args.extensionId });
     }
     // ===== Phase 3: Developer Tools Handlers =====
     async handleCheckExtensionPermissions(args) {
         const result = await this.developerToolsHandler.checkExtensionPermissions(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('check_extension_permissions', result, 'analysis', { extensionId: args.extensionId });
     }
     async handleAuditExtensionSecurity(args) {
         const result = await this.developerToolsHandler.auditExtensionSecurity(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('audit_extension_security', result, 'analysis', { extensionId: args.extensionId });
     }
     async handleCheckExtensionUpdates(args) {
         const result = await this.developerToolsHandler.checkExtensionUpdates(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('check_extension_updates', result, 'detailed', { extensionId: args.extensionId });
     }
     // ===== 快捷调试工具处理器 =====
     async handleQuickExtensionDebug(args) {
         const result = await this.extensionHandler.quickExtensionDebug(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('quick_extension_debug', result, 'analysis', { extensionId: args.extensionId });
     }
     async handleQuickPerformanceCheck(args) {
         const result = await this.extensionHandler.quickPerformanceCheck(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return await this.buildToolResponse('quick_performance_check', result, 'analysis', { extensionId: args.extensionId });
+    }
+    // ===== VIP: Response Builder & Metrics Integration =====
+    /**
+     * Build tool response with configuration-driven context and suggestions
+     */
+    async buildToolResponse(toolName, data, format = 'json', context) {
+        const startTime = Date.now();
+        const config = getToolConfig(toolName);
+        // If no config or not using Response Builder, return JSON
+        if (!config || !config.useResponseBuilder) {
+            this.metricsCollector.recordToolUsage(toolName, startTime, true);
+            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        }
+        const response = new ExtensionResponse();
+        // Format main content
+        await this.formatToolData(response, toolName, data, format);
+        // Apply context configuration
+        await response.applyContextConfig(config, {
+            mcpContext: this.mcpContext,
+            pageManager: this.pageManager,
+            extensionHandler: this.extensionHandler
+        });
+        // Generate and apply suggestions
+        if (config.suggestionRules.enabled) {
+            const suggestions = await this.suggestionEngine.generateSuggestions(toolName, data, {
+                extensionId: context?.extensionId,
+                toolResult: data
+            });
+            response.addSuggestions(suggestions);
+            // Record suggestions for metrics
+            this.metricsCollector.recordSuggestionsGiven(toolName, suggestions.map(s => s.toolName));
+        }
+        // Record metrics
+        if (config.metrics.trackUsage) {
+            this.metricsCollector.recordToolUsage(toolName, startTime, true);
+        }
+        return await response.build(toolName, this.mcpContext);
+    }
+    /**
+     * Format tool data into response
+     */
+    async formatToolData(response, toolName, data, format) {
+        if (format === 'json') {
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(data, null, 2));
+            response.appendLine('```');
+            return;
+        }
+        // List format
+        if (format === 'list' && Array.isArray(data)) {
+            response.appendLine(`Found ${data.length} item(s):`);
+            response.appendLine('');
+            data.forEach((item, i) => {
+                if (typeof item === 'object') {
+                    const key = item.name || item.id || item.title || item.url || `Item ${i + 1}`;
+                    response.appendLine(`${i + 1}. ${key}`);
+                }
+                else {
+                    response.appendLine(`${i + 1}. ${item}`);
+                }
+            });
+            return;
+        }
+        // Detailed format
+        if (format === 'detailed') {
+            if (typeof data === 'object' && !Array.isArray(data)) {
+                for (const [key, value] of Object.entries(data)) {
+                    response.appendLine(`**${key}**: ${JSON.stringify(value)}`);
+                }
+            }
+            else {
+                response.appendLine(JSON.stringify(data, null, 2));
+            }
+            return;
+        }
+        // Analysis format
+        if (format === 'analysis') {
+            response.appendLine('## Analysis Results');
+            response.appendLine('');
+            if (typeof data === 'object') {
+                for (const [key, value] of Object.entries(data)) {
+                    response.appendLine(`### ${key}`);
+                    response.appendLine(JSON.stringify(value, null, 2));
+                    response.appendLine('');
+                }
+            }
+            return;
+        }
+    }
+    /**
+     * Save metrics on cleanup
+     */
+    async saveMetricsOnCleanup() {
+        try {
+            const metrics = this.metricsCollector.exportMetrics();
+            await this.metricsPersistence.appendMetrics(metrics);
+            console.log('[ChromeDebugServer] Metrics saved successfully');
+        }
+        catch (error) {
+            console.error('[ChromeDebugServer] Failed to save metrics:', error);
+        }
     }
     /**
      * Starts the MCP server with specified transport mode.
@@ -1092,6 +1166,8 @@ export class ChromeDebugServer {
      * Performs cleanup when shutting down the server.
      */
     async cleanup() {
+        // Save metrics before cleanup
+        await this.saveMetricsOnCleanup();
         await this.chromeManager.cleanup();
         await this.pageManager.cleanup();
         if (this.remoteTransport) {

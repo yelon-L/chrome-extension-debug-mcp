@@ -28,6 +28,9 @@ export declare class ChromeDebugServer {
     advancedInteractionHandler: AdvancedInteractionHandler;
     waitHelper: WaitHelper;
     developerToolsHandler: DeveloperToolsHandler;
+    private suggestionEngine;
+    private metricsCollector;
+    private metricsPersistence;
     constructor();
     /**
      * Sets up handlers for all supported MCP tools.
@@ -46,12 +49,7 @@ export declare class ChromeDebugServer {
             text: string;
         }[];
     }>;
-    handleGetConsoleLogs(args: GetConsoleLogsArgs): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleGetConsoleLogs(args: GetConsoleLogsArgs): Promise<any>;
     handleEvaluate(args: EvaluateArgs): Promise<{
         content: Array<{
             type: string;
@@ -76,12 +74,7 @@ export declare class ChromeDebugServer {
             text: string;
         }>;
     }>;
-    handleListTabs(): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleListTabs(): Promise<any>;
     handleNewTab(args: NewTabArgs): Promise<{
         content: {
             type: string;
@@ -101,78 +94,33 @@ export declare class ChromeDebugServer {
         }[];
     }>;
     handleListExtensions(args: any): Promise<any>;
-    handleGetExtensionLogs(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleGetExtensionLogs(args: any): Promise<any>;
     handleInjectContentScript(args: any): Promise<{
         content: {
             type: string;
             text: string;
         }[];
     }>;
-    handleContentScriptStatus(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleListExtensionContexts(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleContentScriptStatus(args: any): Promise<any>;
+    handleListExtensionContexts(args: any): Promise<any>;
     handleSwitchExtensionContext(args: any): Promise<{
         content: {
             type: string;
             text: string;
         }[];
     }>;
-    handleInspectExtensionStorage(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleMonitorExtensionMessages(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleTrackExtensionAPICalls(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleTestExtensionOnMultiplePages(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleInspectExtensionStorage(args: any): Promise<any>;
+    handleMonitorExtensionMessages(args: any): Promise<any>;
+    handleTrackExtensionAPICalls(args: any): Promise<any>;
+    handleTestExtensionOnMultiplePages(args: any): Promise<any>;
     handleTrackExtensionNetwork(args: any): Promise<{
         content: {
             type: string;
             text: string;
         }[];
     }>;
-    handleListExtensionRequests(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleGetExtensionRequestDetails(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleListExtensionRequests(args: any): Promise<any>;
+    handleGetExtensionRequestDetails(args: any): Promise<any>;
     handleExportExtensionNetworkHAR(args: any): Promise<{
         content: {
             type: string;
@@ -193,18 +141,8 @@ export declare class ChromeDebugServer {
     }>;
     handlePerformanceGetInsights(args: {
         insightName: string;
-    }): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handlePerformanceListInsights(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    }): Promise<any>;
+    handlePerformanceListInsights(args: any): Promise<any>;
     handleEmulateCPU(args: {
         rate: number;
         extensionId?: string;
@@ -227,18 +165,8 @@ export declare class ChromeDebugServer {
         extensionId: string;
         testUrl: string;
         timeout?: number;
-    }): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleTakeSnapshot(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    }): Promise<any>;
+    handleTakeSnapshot(args: any): Promise<any>;
     handleClickByUid(args: any): Promise<{
         content: {
             type: string;
@@ -293,42 +221,24 @@ export declare class ChromeDebugServer {
             text: string;
         }[];
     }>;
-    handleWaitForExtensionReady(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleCheckExtensionPermissions(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleAuditExtensionSecurity(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleCheckExtensionUpdates(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleQuickExtensionDebug(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleQuickPerformanceCheck(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleWaitForExtensionReady(args: any): Promise<any>;
+    handleCheckExtensionPermissions(args: any): Promise<any>;
+    handleAuditExtensionSecurity(args: any): Promise<any>;
+    handleCheckExtensionUpdates(args: any): Promise<any>;
+    handleQuickExtensionDebug(args: any): Promise<any>;
+    handleQuickPerformanceCheck(args: any): Promise<any>;
+    /**
+     * Build tool response with configuration-driven context and suggestions
+     */
+    private buildToolResponse;
+    /**
+     * Format tool data into response
+     */
+    private formatToolData;
+    /**
+     * Save metrics on cleanup
+     */
+    private saveMetricsOnCleanup;
     /**
      * Starts the MCP server with specified transport mode.
      */
