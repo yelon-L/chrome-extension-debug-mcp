@@ -105,7 +105,7 @@ node build/main.js --browserUrl http://localhost:9222 --headless --isolated
 **启动方式**:
 ```bash
 # HTTP服务器模式 (带CLI参数支持)
-node build/main.js --transport http --port 31232
+node build/main.js --transport http --port 32132
 
 # 传统remote.js模式
 node build/remote.js
@@ -116,12 +116,12 @@ node build/main.js --transport http --port 8080 --headless --viewport 1920x1080
 **API访问**:
 ```bash
 # 列出所有工具
-curl -X POST http://localhost:3000/message \
+curl -X POST http://localhost:32132/message \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # 执行扩展性能分析
-curl -X POST http://localhost:3000/message \
+curl -X POST http://localhost:32132/message \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -289,7 +289,7 @@ Add to `cline_mcp_settings.json`:
 node build/remote.js
 
 # Access via HTTP API
-curl -X POST http://localhost:3000/message \
+curl -X POST http://localhost:32132/message \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```

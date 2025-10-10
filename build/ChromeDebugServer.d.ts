@@ -100,12 +100,7 @@ export declare class ChromeDebugServer {
             text: string;
         }[];
     }>;
-    handleListExtensions(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleListExtensions(args: any): Promise<any>;
     handleGetExtensionLogs(args: any): Promise<{
         content: {
             type: string;

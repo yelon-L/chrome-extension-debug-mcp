@@ -17,7 +17,7 @@ export class RemoteTransport {
   constructor(server: Server, config: RemoteMCPConfig = {}) {
     this.server = server;
     this.config = {
-      port: 3000,
+      port: 32132,
       host: 'localhost',
       cors: {
         origin: '*',

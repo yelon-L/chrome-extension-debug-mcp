@@ -25,7 +25,7 @@ const hostArg = args.find(arg => arg.startsWith('--host='));
 const corsArg = args.find(arg => arg.startsWith('--cors='));
 // Configuration from environment and command line
 const config = {
-    port: parseInt(portArg?.split('=')[1] || process.env.MCP_PORT || '31232'),
+    port: parseInt(portArg?.split('=')[1] || process.env.MCP_PORT || '32132'),
     host: hostArg?.split('=')[1] || process.env.MCP_HOST || 'localhost',
     cors: {
         origin: corsArg?.split('=')[1] || process.env.MCP_CORS_ORIGIN || '*',

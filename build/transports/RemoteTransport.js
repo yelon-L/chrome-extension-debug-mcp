@@ -12,7 +12,7 @@ export class RemoteTransport {
     constructor(server, config = {}) {
         this.server = server;
         this.config = {
-            port: 3000,
+            port: 32132,
             host: 'localhost',
             cors: {
                 origin: '*',

@@ -19,6 +19,7 @@ import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandle
 import { WaitHelper } from './utils/WaitHelper.js';
 import { DeveloperToolsHandler } from './handlers/DeveloperToolsHandler.js';
 import { McpContext } from './context/McpContext.js';
+import { ExtensionResponse } from './utils/ExtensionResponse.js';
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
 // Import tool definitions
@@ -820,10 +821,22 @@ export class ChromeDebugServer {
         return { content: [{ type: 'text', text: `closed:${args.tabId}` }] };
     }
     async handleListExtensions(args) {
-        const result = await this.extensionHandler.listExtensions(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        const extensions = await this.extensionHandler.listExtensions(args);
+        // Use Response Builder pattern
+        const response = new ExtensionResponse();
+        response.appendLine(`Found ${extensions.length} extension(s):`);
+        for (const ext of extensions) {
+            const status = ext.enabled ? '✅' : '⚠️';
+            response.appendLine(`${status} ${ext.name} (${ext.version}) - ${ext.id}`);
+        }
+        // Auto-attach context
+        const page = await this.pageManager.getActivePage();
+        if (page) {
+            response.setIncludePageContext(true);
+            response.setContext({ page });
+        }
+        response.setIncludeAvailableActions(true);
+        return await response.build('list_extensions', this.mcpContext);
     }
     async handleGetExtensionLogs(args) {
         const result = await this.extensionHandler.getExtensionLogs(args);
