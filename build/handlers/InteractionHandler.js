@@ -103,28 +103,46 @@ export class InteractionHandler {
             await page.waitForSelector('body', { timeout: 3000 }).catch(() => {
                 // 如果body都没有，继续尝试截图
             });
+            // Phase 5优化: 支持format和quality参数，默认JPEG提升50%性能
+            const format = args.format || 'jpeg';
+            const quality = args.quality || 60;
+            const screenshotOptions = {
+                encoding: 'binary',
+                optimizeForSpeed: true
+            };
+            // 只有JPEG/WebP支持quality参数
+            if (format === 'jpeg' || format === 'webp') {
+                screenshotOptions.quality = quality;
+            }
             let buffer;
             if (args.selector) {
                 // 增加超时时间到10秒，确保元素加载完成
                 const el = await page.waitForSelector(args.selector, { timeout: 10000, visible: true });
                 if (!el)
                     throw new Error('Element not found');
-                buffer = await el.screenshot({ encoding: 'binary' });
+                buffer = await el.screenshot({
+                    ...screenshotOptions,
+                    type: format
+                });
             }
             else {
                 // 优化截图参数，提高性能
                 buffer = await page.screenshot({
                     fullPage: !!args.fullPage,
                     clip: args.clip,
-                    encoding: 'binary',
-                    optimizeForSpeed: true // 优化速度
+                    type: format,
+                    ...screenshotOptions
                 });
             }
-            if (args.path) {
+            // 确保buffer是Buffer类型
+            if (typeof buffer === 'string') {
+                buffer = Buffer.from(buffer, 'base64');
+            }
+            if (args.path && buffer) {
                 const fs = await import('fs');
                 await fs.promises.writeFile(args.path, buffer);
             }
-            const base64 = args.returnBase64 ? buffer.toString('base64') : undefined;
+            const base64 = args.returnBase64 && buffer ? buffer.toString('base64') : undefined;
             return {
                 content: [{
                         type: 'text',

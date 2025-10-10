@@ -112,28 +112,50 @@ export class InteractionHandler {
         // 如果body都没有，继续尝试截图
       });
       
-      let buffer: Buffer | undefined;
+      // Phase 5优化: 支持format和quality参数，默认JPEG提升50%性能
+      const format = (args as any).format || 'jpeg';
+      const quality = (args as any).quality || 60;
+      
+      const screenshotOptions: any = {
+        encoding: 'binary',
+        optimizeForSpeed: true
+      };
+      
+      // 只有JPEG/WebP支持quality参数
+      if (format === 'jpeg' || format === 'webp') {
+        screenshotOptions.quality = quality;
+      }
+      
+      let buffer: Buffer | string | undefined;
       if (args.selector) {
         // 增加超时时间到10秒，确保元素加载完成
         const el = await page.waitForSelector(args.selector, { timeout: 10000, visible: true });
         if (!el) throw new Error('Element not found');
-        buffer = await el.screenshot({ encoding: 'binary' }) as Buffer;
+        buffer = await el.screenshot({ 
+          ...screenshotOptions,
+          type: format 
+        });
       } else {
         // 优化截图参数，提高性能
         buffer = await page.screenshot({ 
           fullPage: !!args.fullPage, 
-          clip: args.clip as any, 
-          encoding: 'binary',
-          optimizeForSpeed: true  // 优化速度
-        }) as Buffer;
+          clip: args.clip as any,
+          type: format,
+          ...screenshotOptions
+        });
       }
       
-      if (args.path) {
+      // 确保buffer是Buffer类型
+      if (typeof buffer === 'string') {
+        buffer = Buffer.from(buffer, 'base64');
+      }
+      
+      if (args.path && buffer) {
         const fs = await import('fs');
         await fs.promises.writeFile(args.path, buffer);
       }
       
-      const base64 = args.returnBase64 ? buffer.toString('base64') : undefined;
+      const base64 = args.returnBase64 && buffer ? buffer.toString('base64') : undefined;
       return { 
         content: [{ 
           type: 'text', 

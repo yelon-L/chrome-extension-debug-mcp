@@ -142,6 +142,8 @@ export declare class ChromeDebugServer {
     handleNavigatePageHistory(args: {
         direction: 'back' | 'forward';
         steps?: number;
+        waitUntil?: 'domcontentloaded' | 'load' | 'networkidle2';
+        timeout?: number;
     }): Promise<any>;
     handleResizePage(args: {
         width?: number;

@@ -59,90 +59,96 @@ export class QuickDebugHandler {
     };
 
     try {
-      // 1. 获取扩展基本信息
-      console.log('[QuickDebug] 步骤1/4: 获取扩展信息...');
-      try {
-        const extensions = await this.extensionHandler.listExtensions({ id: args.extensionId });
-        results.extension = extensions.find((e: any) => e.id === args.extensionId);
+      // Phase 3 优化: 并行执行所有独立任务
+      console.log('[QuickDebug] 并行执行4个诊断任务...');
+      
+      const tasks = [
+        // Task 1: 获取扩展基本信息
+        (async () => {
+          try {
+            const extensions = await this.extensionHandler.listExtensions({ id: args.extensionId });
+            results.extension = extensions.find((e: any) => e.id === args.extensionId);
+            
+            if (!results.extension) {
+              results.extension = { 
+                error: '未找到扩展',
+                suggestion: '使用list_extensions查看所有已加载扩展'
+              };
+            }
+          } catch (error) {
+            results.extension = { 
+              error: error instanceof Error ? error.message : String(error)
+            };
+          }
+        })(),
         
-        if (!results.extension) {
-          results.extension = { 
-            error: '未找到扩展',
-            suggestion: '使用list_extensions查看所有已加载扩展'
-          };
-        }
-      } catch (error) {
-        results.extension = { 
-          error: error instanceof Error ? error.message : String(error)
-        };
-      }
-
-      // 2. 获取日志
-      if (args.includeLogs !== false) {
-        console.log('[QuickDebug] 步骤2/4: 获取扩展日志...');
-        try {
-          const logs = await this.extensionHandler.getExtensionLogs({
-            extensionId: args.extensionId
-          });
-          // 限制返回最新50条
-          const recent = logs.logs.slice(-50);
-          results.logs = {
-            total: logs.logs.length,
-            recent: recent.slice(0, 10),
-            errorCount: logs.logs.filter((l: any) => l.level === 'error').length,
-            warnCount: logs.logs.filter((l: any) => l.level === 'warn').length
-          };
-        } catch (error) {
-          results.logs = { 
-            error: error instanceof Error ? error.message : String(error)
-          };
-        }
-      }
-
-      // 3. 检查内容脚本
-      if (args.includeContentScript !== false) {
-        console.log('[QuickDebug] 步骤3/4: 检查内容脚本...');
-        try {
-          const status = await this.extensionHandler.contentScriptStatus({
-            extensionId: args.extensionId
-          });
-          results.contentScript = status;
-        } catch (error) {
-          results.contentScript = { 
-            error: error instanceof Error ? error.message : String(error)
-          };
-        }
-      }
-
-      // 4. 检查存储
-      if (args.includeStorage !== false) {
-        console.log('[QuickDebug] 步骤4/4: 检查扩展存储...');
-        try {
-          const storage = await this.extensionHandler.inspectExtensionStorage({
-            extensionId: args.extensionId
-          });
-          // 从storageData数组中统计各类型存储的项数
-          const localData = storage.storageData.find(s => s.type === 'local');
-          const syncData = storage.storageData.find(s => s.type === 'sync');
-          const sessionData = storage.storageData.find(s => s.type === 'session');
-          
-          results.storage = {
-            local: localData ? Object.keys(localData.data).length : 0,
-            sync: syncData ? Object.keys(syncData.data).length : 0,
-            session: sessionData ? Object.keys(sessionData.data).length : 0,
-            quota: localData?.quota || syncData?.quota
-          };
-        } catch (error) {
-          results.storage = { 
-            error: error instanceof Error ? error.message : String(error)
-          };
-        }
-      }
+        // Task 2: 获取日志（可选）
+        args.includeLogs !== false ? (async () => {
+          try {
+            const logs = await this.extensionHandler.getExtensionLogs({
+              extensionId: args.extensionId
+            });
+            // 限制返回最新50条
+            const recent = logs.logs.slice(-50);
+            results.logs = {
+              total: logs.logs.length,
+              recent: recent.slice(0, 10),
+              errorCount: logs.logs.filter((l: any) => l.level === 'error').length,
+              warnCount: logs.logs.filter((l: any) => l.level === 'warn').length
+            };
+          } catch (error) {
+            results.logs = { 
+              error: error instanceof Error ? error.message : String(error)
+            };
+          }
+        })() : Promise.resolve(),
+        
+        // Task 3: 检查内容脚本（可选）
+        args.includeContentScript !== false ? (async () => {
+          try {
+            const status = await this.extensionHandler.contentScriptStatus({
+              extensionId: args.extensionId
+            });
+            results.contentScript = status;
+          } catch (error) {
+            results.contentScript = { 
+              error: error instanceof Error ? error.message : String(error)
+            };
+          }
+        })() : Promise.resolve(),
+        
+        // Task 4: 检查存储（可选）
+        args.includeStorage !== false ? (async () => {
+          try {
+            const storage = await this.extensionHandler.inspectExtensionStorage({
+              extensionId: args.extensionId
+            });
+            // 从storageData数组中统计各类型存储的项数
+            const localData = storage.storageData.find(s => s.type === 'local');
+            const syncData = storage.storageData.find(s => s.type === 'sync');
+            const sessionData = storage.storageData.find(s => s.type === 'session');
+            
+            results.storage = {
+              local: localData ? Object.keys(localData.data).length : 0,
+              sync: syncData ? Object.keys(syncData.data).length : 0,
+              session: sessionData ? Object.keys(sessionData.data).length : 0,
+              quota: localData?.quota || syncData?.quota
+            };
+          } catch (error) {
+            results.storage = { 
+              error: error instanceof Error ? error.message : String(error)
+            };
+          }
+        })() : Promise.resolve()
+      ];
+      
+      // 并行等待所有任务完成
+      await Promise.all(tasks);
 
       // 生成摘要
       results.summary = this.generateQuickDebugSummary(results);
 
-      console.log('[QuickDebug] 快速诊断完成');
+      console.log('[QuickDebug] 快速诊断完成（并行优化）');
       return results;
       
     } catch (error) {
@@ -165,58 +171,68 @@ export class QuickDebugHandler {
     };
 
     try {
-      // 1. 性能分析（简化版）
-      console.log('[QuickPerformance] 步骤1/2: 分析性能影响...');
-      try {
-        const performance = await this.extensionHandler.analyzeExtensionPerformance({
-          extensionId: args.extensionId,
-          testUrl: args.testUrl || 'https://example.com',
-          duration: 2000  // 快速检测使用较短时间
-        });
-        // 计算简单的影响评分（基于CPU和内存）
-        const impactScore = Math.max(0, 100 - (
-          performance.metrics.delta.cpuUsage * 2 + 
-          performance.metrics.delta.memoryUsage / 10
-        ));
+      // Phase 3 优化: 并行执行性能分析和网络监控
+      console.log('[QuickPerformance] 并行执行2个性能检测任务...');
+      
+      const tasks = [
+        // Task 1: 性能分析（简化版）
+        (async () => {
+          try {
+            const performance = await this.extensionHandler.analyzeExtensionPerformance({
+              extensionId: args.extensionId,
+              testUrl: args.testUrl || 'https://example.com',
+              duration: 2000  // 快速检测使用较短时间
+            });
+            // 计算简单的影响评分（基于CPU和内存）
+            const impactScore = Math.max(0, 100 - (
+              performance.metrics.delta.cpuUsage * 2 + 
+              performance.metrics.delta.memoryUsage / 10
+            ));
+            
+            results.performance = {
+              cpuUsage: performance.metrics.delta.cpuUsage,
+              memoryUsage: performance.metrics.delta.memoryUsage,
+              executionTime: performance.metrics.delta.executionTime,
+              impactScore: Math.round(impactScore),
+              cwv: performance.cwv?.withExtension || null,
+              recommendations: performance.recommendations?.slice(0, 3) || []
+            };
+          } catch (error) {
+            results.performance = { 
+              error: error instanceof Error ? error.message : String(error)
+            };
+          }
+        })(),
         
-        results.performance = {
-          cpuUsage: performance.metrics.delta.cpuUsage,
-          memoryUsage: performance.metrics.delta.memoryUsage,
-          executionTime: performance.metrics.delta.executionTime,
-          impactScore: Math.round(impactScore),
-          cwv: performance.cwv?.withExtension || null,
-          recommendations: performance.recommendations?.slice(0, 3) || []
-        };
-      } catch (error) {
-        results.performance = { 
-          error: error instanceof Error ? error.message : String(error)
-        };
-      }
-
-      // 2. 网络监控（10秒）
-      console.log('[QuickPerformance] 步骤2/2: 监控网络活动...');
-      try {
-        const network = await this.extensionHandler.trackExtensionNetwork({
-          extensionId: args.extensionId,
-          duration: 10000,
-          includeRequests: false
-        });
-        results.network = {
-          totalRequests: network.totalRequests,
-          totalDataTransferred: network.totalDataTransferred,
-          averageRequestTime: network.averageRequestTime,
-          requestsByType: network.requestsByType
-        };
-      } catch (error) {
-        results.network = { 
-          error: error instanceof Error ? error.message : String(error)
-        };
-      }
+        // Task 2: 网络监控（10秒）
+        (async () => {
+          try {
+            const network = await this.extensionHandler.trackExtensionNetwork({
+              extensionId: args.extensionId,
+              duration: 10000,
+              includeRequests: false
+            });
+            results.network = {
+              totalRequests: network.totalRequests,
+              totalDataTransferred: network.totalDataTransferred,
+              averageRequestTime: network.averageRequestTime,
+              requestsByType: network.requestsByType
+            };
+          } catch (error) {
+            results.network = { 
+              error: error instanceof Error ? error.message : String(error)
+            };
+          }
+        })()
+      ];
+      
+      // 并行等待所有任务完成
+      await Promise.all(tasks);
 
       // 生成摘要
       results.summary = this.generatePerformanceSummary(results);
 
-      console.log('[QuickPerformance] 快速性能检测完成');
+      console.log('[QuickPerformance] 快速性能检测完成（并行优化）');
       return results;
       
     } catch (error) {
