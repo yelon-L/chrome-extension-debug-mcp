@@ -15,6 +15,7 @@ import { InteractionHandler } from './handlers/InteractionHandler.js';
 import { EvaluationHandler } from './handlers/EvaluationHandler.js';
 import { ExtensionHandler } from './handlers/ExtensionHandler.js';
 import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
+import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandler.js';
 import { McpContext } from './context/McpContext.js';
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
@@ -43,6 +44,8 @@ export class ChromeDebugServer {
     // Phase 2.1: Snapshot & UID Interaction
     mcpContext;
     uidHandler;
+    // Phase 2.2: Advanced Interaction
+    advancedInteractionHandler;
     constructor() {
         // Initialize MCP server with basic configuration
         this.server = new Server({
@@ -64,6 +67,8 @@ export class ChromeDebugServer {
         // Phase 2.1: Initialize Context and UID Handler
         this.mcpContext = new McpContext();
         this.uidHandler = new UIDInteractionHandler(this.pageManager, this.mcpContext);
+        // Phase 2.2: Initialize Advanced Interaction Handler
+        this.advancedInteractionHandler = new AdvancedInteractionHandler(this.pageManager, this.mcpContext);
         this.setupToolHandlers();
         this.server.onerror = (error) => console.error('[MCP Error]', error);
     }
@@ -689,6 +694,17 @@ export class ChromeDebugServer {
                         return await this.handleFillByUid(args);
                     case 'hover_by_uid':
                         return await this.handleHoverByUid(args);
+                    // Phase 2.2: Advanced Interaction Tools
+                    case 'hover_element':
+                        return await this.handleHoverElement(args);
+                    case 'drag_element':
+                        return await this.handleDragElement(args);
+                    case 'fill_form':
+                        return await this.handleFillForm(args);
+                    case 'upload_file':
+                        return await this.handleUploadFile(args);
+                    case 'handle_dialog':
+                        return await this.handleDialog(args);
                     // Quick Debug Tools
                     case 'quick_extension_debug':
                         return await this.handleQuickExtensionDebug(args);
@@ -921,6 +937,37 @@ export class ChromeDebugServer {
     }
     async handleHoverByUid(args) {
         const result = await this.uidHandler.hoverByUid(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    // ===== Phase 2.2: Advanced Interaction Handlers =====
+    async handleHoverElement(args) {
+        const result = await this.advancedInteractionHandler.hoverElement(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleDragElement(args) {
+        const result = await this.advancedInteractionHandler.dragElement(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleFillForm(args) {
+        const result = await this.advancedInteractionHandler.fillForm(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleUploadFile(args) {
+        const result = await this.advancedInteractionHandler.uploadFile(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleDialog(args) {
+        const result = await this.advancedInteractionHandler.handleDialog(args);
         return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         };

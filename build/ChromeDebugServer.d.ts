@@ -4,6 +4,7 @@
  * This is the main server class that orchestrates all modules
  */
 import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
+import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandler.js';
 import { LaunchChromeArgs, AttachArgs, GetConsoleLogsArgs, EvaluateArgs, ClickArgs, TypeArgs, ScreenshotArgs, NewTabArgs, SwitchTabArgs, CloseTabArgs, TransportType, RemoteMCPConfig } from './types/index.js';
 /**
  * Main Chrome Debug MCP Server class
@@ -22,6 +23,7 @@ export declare class ChromeDebugServer {
     private extensionHandler;
     private mcpContext;
     uidHandler: UIDInteractionHandler;
+    advancedInteractionHandler: AdvancedInteractionHandler;
     constructor();
     /**
      * Sets up handlers for all supported MCP tools.
@@ -251,6 +253,36 @@ export declare class ChromeDebugServer {
         }[];
     }>;
     handleHoverByUid(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleHoverElement(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleDragElement(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleFillForm(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleUploadFile(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleDialog(args: any): Promise<{
         content: {
             type: string;
             text: string;

@@ -355,6 +355,22 @@
     <div role="alert" id="alertBox" style="display:none; padding: 10px; background: #f44336; border-radius: 4px; margin-top: 10px;">
       警告信息
     </div>
+    
+    <!-- Phase 2.2: 高级交互测试元素 -->
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+      <!-- 文件上传 -->
+      <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 5px; font-size: 12px;">文件上传测试:</label>
+        <input type="file" id="fileInput" accept="image/*" style="width: 100%; font-size: 11px;" />
+        <div id="fileStatus" style="margin-top: 5px; font-size: 11px;"></div>
+      </div>
+      
+      <!-- 对话框触发 -->
+      <div style="margin-bottom: 10px;">
+        <button id="confirmBtn" class="btn" style="width: 100%;">触发确认对话框</button>
+        <button id="promptBtn" class="btn" style="width: 100%; margin-top: 5px;">触发提示对话框</button>
+      </div>
+    </div>
   </div>
   
   <script>
@@ -407,6 +423,31 @@
     document.getElementById('closeButton').addEventListener('click', () => {
       const alertBox = document.getElementById('alertBox');
       alertBox.style.display = alertBox.style.display === 'none' ? 'block' : 'none';
+    });
+    
+    // Phase 2.2: 文件上传处理
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        document.getElementById('fileStatus').textContent = 
+          `已选择: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+        console.log('[File Upload]', { name: file.name, size: file.size, type: file.type });
+      }
+    });
+    
+    // Phase 2.2: 对话框处理
+    document.getElementById('confirmBtn').addEventListener('click', () => {
+      const result = confirm('这是一个确认对话框，点击确定或取消');
+      console.log('[Confirm Dialog]', result);
+    });
+    
+    document.getElementById('promptBtn').addEventListener('click', () => {
+      const result = prompt('请输入一些文本:', '默认值');
+      console.log('[Prompt Dialog]', result);
+      if (result !== null) {
+        alert(`你输入了: ${result}`);
+      }
     });
   </script>
   
