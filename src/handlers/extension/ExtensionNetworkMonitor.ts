@@ -18,6 +18,8 @@ import type {
   TrackExtensionNetworkArgs,
   NetworkMonitoringStats
 } from '../../types/network-types.js';
+import { HARExporter } from '../../utils/HARExporter.js';
+import { writeFile } from 'fs/promises';
 
 export class ExtensionNetworkMonitor {
   private chromeManager: ChromeManager;
@@ -693,5 +695,59 @@ export class ExtensionNetworkMonitor {
     this.isMonitoring.delete(extensionId);
     this.monitoringStartTime.delete(extensionId);
     console.log(`[ExtensionNetworkMonitor] 已清理监控数据: ${extensionId}`);
+  }
+
+  /**
+   * 导出扩展网络活动为HAR格式
+   */
+  async exportHAR(args: {
+    extensionId: string;
+    duration?: number;
+    outputPath?: string;
+    includeContent?: boolean;
+    testUrl?: string;
+  }): Promise<{ harData: any; savedPath?: string; summary: any }> {
+    console.log(`[ExtensionNetworkMonitor] 开始导出HAR: ${args.extensionId}`);
+    
+    try {
+      // 1. 收集网络数据
+      const analysis = await this.trackExtensionNetwork({
+        extensionId: args.extensionId,
+        duration: args.duration || 30000,
+        includeRequests: true,
+        testUrl: args.testUrl
+      });
+
+      // 2. 转换为HAR格式
+      const harData = HARExporter.convertNetworkRequestsToHAR(
+        analysis.requests || [],
+        {
+          pageUrl: args.testUrl,
+          pageTitle: `Extension Network Activity - ${args.extensionId}`
+        }
+      );
+
+      // 3. 保存文件（如果指定路径）
+      let savedPath: string | undefined;
+      if (args.outputPath) {
+        await writeFile(args.outputPath, JSON.stringify(harData, null, 2), 'utf-8');
+        savedPath = args.outputPath;
+        console.log(`[ExtensionNetworkMonitor] HAR文件已保存: ${savedPath}`);
+      }
+
+      // 4. 生成摘要
+      const summary = HARExporter.generateHARSummary(harData);
+
+      console.log(`[ExtensionNetworkMonitor] HAR导出完成，共${summary.totalRequests}个请求`);
+
+      return {
+        harData,
+        savedPath,
+        summary
+      };
+    } catch (error) {
+      console.error('[ExtensionNetworkMonitor] HAR导出失败:', error);
+      throw new Error(`HAR导出失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }

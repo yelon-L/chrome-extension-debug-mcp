@@ -25,6 +25,9 @@ import { ElementLocator } from './interaction/ElementLocator.js';
 import { FormHandler } from './interaction/FormHandler.js';
 import { PageStateMonitor } from './interaction/PageStateMonitor.js';
 
+// Quick Debug Handler
+import { QuickDebugHandler } from './QuickDebugHandler.js';
+
 // 导入类型
 import {
   GetExtensionLogsArgs,
@@ -77,6 +80,9 @@ export class ExtensionHandler {
   private elementLocator: ElementLocator;
   private formHandler: FormHandler;
   private pageStateMonitor: PageStateMonitor;
+  
+  // Quick Debug Handler
+  private quickDebugHandler: QuickDebugHandler;
 
   constructor(
     private chromeManager: ChromeManager,
@@ -100,6 +106,9 @@ export class ExtensionHandler {
     this.elementLocator = new ElementLocator(chromeManager, pageManager);
     this.formHandler = new FormHandler(chromeManager, pageManager);
     this.pageStateMonitor = new PageStateMonitor(chromeManager, pageManager, this.dialogManager);
+    
+    // 初始化Quick Debug Handler
+    this.quickDebugHandler = new QuickDebugHandler(this);
   }
 
   // 添加缺失的 detector 属性
@@ -350,5 +359,28 @@ export class ExtensionHandler {
    */
   async trackExtensionApiCalls(options: any) {
     return await this.messageTracker.trackExtensionAPICalls(options);
+  }
+
+  // ===== 快捷调试工具 =====
+
+  /**
+   * 快速扩展调试（组合工具）
+   */
+  async quickExtensionDebug(args: any) {
+    return await this.quickDebugHandler.quickExtensionDebug(args);
+  }
+
+  /**
+   * 快速性能检测（组合工具）
+   */
+  async quickPerformanceCheck(args: any) {
+    return await this.quickDebugHandler.quickPerformanceCheck(args);
+  }
+
+  /**
+   * 导出网络活动为HAR格式
+   */
+  async exportExtensionNetworkHAR(args: any) {
+    return await this.networkMonitor.exportHAR(args);
   }
 }

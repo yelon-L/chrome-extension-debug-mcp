@@ -6,6 +6,7 @@
  * - 对比有/无扩展的性能差异
  * - 计算扩展对页面性能的影响
  * - 生成性能优化建议
+ * - 集成Web Vitals实时测量
  */
 import type { ChromeManager } from '../../managers/ChromeManager.js';
 import type { PageManager } from '../../managers/PageManager.js';
@@ -31,7 +32,11 @@ export declare class ExtensionPerformanceAnalyzer {
      */
     private calculateMetrics;
     /**
-     * 计算Core Web Vitals
+     * 计算Core Web Vitals（增强版 - 结合trace events和实时测量）
+     */
+    private calculateCoreWebVitalsEnhanced;
+    /**
+     * 计算Core Web Vitals（旧版 - 保留兼容性）
      */
     private calculateCoreWebVitals;
     /**
@@ -47,7 +52,7 @@ export declare class ExtensionPerformanceAnalyzer {
      */
     private calculateImpact;
     /**
-     * 生成优化建议
+     * 生成优化建议（增强版 - 包含Web Vitals建议）
      */
     private generateRecommendations;
     /**

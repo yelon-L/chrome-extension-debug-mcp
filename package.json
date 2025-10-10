@@ -4,7 +4,7 @@
   "type": "module",
   "main": "build/main.js",
   "scripts": {
-    "build": "rm -rf build/* && tsc",
+    "build": "rimraf build && tsc",
     "start": "node build/main.js",
     "start:remote": "node build/remote.js",
     "start:legacy": "node build/index.js",
@@ -28,7 +28,8 @@
     "@modelcontextprotocol/sdk": "^1.19.1",
     "chrome-remote-interface": "^0.33.0",
     "node-fetch": "^3.3.2",
-    "puppeteer": "^22.8.2"
+    "puppeteer": "^22.8.2",
+    "web-vitals": "^3.5.0"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.22",
@@ -36,6 +37,7 @@
     "@types/node": "^20.0.0",
     "@types/node-fetch": "^2.6.13",
     "@types/yargs": "^17.0.33",
+    "rimraf": "^6.0.1",
     "typescript": "^5.0.0"
   }
 }

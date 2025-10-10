@@ -42,6 +42,10 @@ import {
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
 
+// Import tool definitions
+import { quickDebugTools } from './tools/quick-debug-tools.js';
+import { harTools } from './tools/har-tools.js';
+
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.error('[ChromeDebugServer]', ...args);
 
@@ -521,6 +525,10 @@ export class ChromeDebugServer {
             required: ['extensionId', 'testUrl']
           }
         },
+        // Quick Debug Tools
+        ...quickDebugTools,
+        // HAR Export Tools
+        ...harTools,
       ],
     }));
 
@@ -576,10 +584,20 @@ export class ChromeDebugServer {
             return await this.handleMonitorExtensionMessages(args as any);
           case 'track_extension_api_calls':
             return await this.handleTrackExtensionAPICalls(args as any);
+          case 'track_extension_network':
+            return await this.handleTrackExtensionNetwork(args as any);
           case 'analyze_extension_performance':
             return await this.handleAnalyzeExtensionPerformance(args as any);
           case 'test_extension_on_multiple_pages':
             return await this.handleTestExtensionOnMultiplePages(args as any);
+          // Quick Debug Tools
+          case 'quick_extension_debug':
+            return await this.handleQuickExtensionDebug(args as any);
+          case 'quick_performance_check':
+            return await this.handleQuickPerformanceCheck(args as any);
+          // HAR Export Tool
+          case 'export_extension_network_har':
+            return await this.handleExportExtensionNetworkHAR(args as any);
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -748,10 +766,40 @@ export class ChromeDebugServer {
 
   // ===== Phase 1 性能分析功能处理器 =====
 
+  public async handleTrackExtensionNetwork(args: any) {
+    const result = await this.extensionHandler.trackExtensionNetwork(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
   public async handleAnalyzeExtensionPerformance(args: any) {
     const result = await this.extensionHandler.analyzeExtensionPerformance(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result) }]
+    };
+  }
+
+  // ===== 快捷调试工具处理器 =====
+
+  public async handleQuickExtensionDebug(args: any) {
+    const result = await this.extensionHandler.quickExtensionDebug(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleQuickPerformanceCheck(args: any) {
+    const result = await this.extensionHandler.quickPerformanceCheck(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleExportExtensionNetworkHAR(args: any) {
+    const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 

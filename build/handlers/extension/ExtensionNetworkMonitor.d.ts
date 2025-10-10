@@ -94,5 +94,19 @@ export declare class ExtensionNetworkMonitor {
      * 清理监控数据
      */
     clearMonitoringData(extensionId: string): void;
+    /**
+     * 导出扩展网络活动为HAR格式
+     */
+    exportHAR(args: {
+        extensionId: string;
+        duration?: number;
+        outputPath?: string;
+        includeContent?: boolean;
+        testUrl?: string;
+    }): Promise<{
+        harData: any;
+        savedPath?: string;
+        summary: any;
+    }>;
 }
 //# sourceMappingURL=ExtensionNetworkMonitor.d.ts.map

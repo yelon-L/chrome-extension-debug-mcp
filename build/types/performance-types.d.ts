@@ -25,6 +25,12 @@ export interface CoreWebVitals {
     cls: number;
     fcp: number;
     ttfb: number;
+    rating?: {
+        lcp: 'good' | 'needs-improvement' | 'poor';
+        fid: 'good' | 'needs-improvement' | 'poor';
+        cls: 'good' | 'needs-improvement' | 'poor';
+    };
+    score?: number;
 }
 export interface PerformanceImpact {
     pageLoadDelay: number;

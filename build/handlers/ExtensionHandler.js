@@ -19,6 +19,8 @@ import { ExtensionLogSearcher } from './interaction/ExtensionLogSearcher.js';
 import { ElementLocator } from './interaction/ElementLocator.js';
 import { FormHandler } from './interaction/FormHandler.js';
 import { PageStateMonitor } from './interaction/PageStateMonitor.js';
+// Quick Debug Handler
+import { QuickDebugHandler } from './QuickDebugHandler.js';
 /**
  * 扩展处理器 - 模块化架构的统一协调器
  */
@@ -43,6 +45,8 @@ export class ExtensionHandler {
         this.elementLocator = new ElementLocator(chromeManager, pageManager);
         this.formHandler = new FormHandler(chromeManager, pageManager);
         this.pageStateMonitor = new PageStateMonitor(chromeManager, pageManager, this.dialogManager);
+        // 初始化Quick Debug Handler
+        this.quickDebugHandler = new QuickDebugHandler(this);
     }
     /**
      * 列出Chrome扩展
@@ -252,6 +256,25 @@ export class ExtensionHandler {
      */
     async trackExtensionApiCalls(options) {
         return await this.messageTracker.trackExtensionAPICalls(options);
+    }
+    // ===== 快捷调试工具 =====
+    /**
+     * 快速扩展调试（组合工具）
+     */
+    async quickExtensionDebug(args) {
+        return await this.quickDebugHandler.quickExtensionDebug(args);
+    }
+    /**
+     * 快速性能检测（组合工具）
+     */
+    async quickPerformanceCheck(args) {
+        return await this.quickDebugHandler.quickPerformanceCheck(args);
+    }
+    /**
+     * 导出网络活动为HAR格式
+     */
+    async exportExtensionNetworkHAR(args) {
+        return await this.networkMonitor.exportHAR(args);
     }
 }
 //# sourceMappingURL=ExtensionHandler.js.map

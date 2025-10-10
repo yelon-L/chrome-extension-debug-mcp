@@ -518,4 +518,72 @@ setInterval(() => {
   lightCPUWork();
 }, 5000); // 每5秒
 
+// ===== 网络请求测试增强 =====
+// 用于测试track_extension_network工具
+
+// 定期发送网络请求（每30秒）
+setInterval(async () => {
+  try {
+    // 1. 测试JSON API
+    const jsonResponse = await fetch('https://httpbin.org/json');
+    const jsonData = await jsonResponse.json();
+    console.log('[Network Test] 📡 JSON API响应:', jsonData.slideshow?.title);
+    
+    // 2. 测试用户代理
+    const uaResponse = await fetch('https://httpbin.org/user-agent');
+    const uaData = await uaResponse.json();
+    console.log('[Network Test] 🌐 User Agent:', uaData['user-agent']);
+    
+    // 3. 测试Headers
+    const headersResponse = await fetch('https://httpbin.org/headers');
+    const headersData = await headersResponse.json();
+    console.log('[Network Test] 📋 Headers数量:', Object.keys(headersData.headers).length);
+    
+  } catch (error) {
+    console.error('[Network Test] ❌ 网络请求失败:', error.message);
+  }
+}, 30000);
+
+// 定期发送图片请求（每45秒）
+setInterval(async () => {
+  try {
+    const imageUrls = [
+      'https://httpbin.org/image/png',
+      'https://httpbin.org/image/jpeg',
+      'https://httpbin.org/image/webp'
+    ];
+    
+    const randomUrl = imageUrls[Math.floor(Math.random() * imageUrls.length)];
+    const response = await fetch(randomUrl);
+    const blob = await response.blob();
+    console.log('[Network Test] 🖼️ 图片下载:', blob.size, 'bytes');
+  } catch (error) {
+    console.error('[Network Test] ❌ 图片请求失败:', error.message);
+  }
+}, 45000);
+
+// 定期测试不同HTTP方法（每60秒）
+setInterval(async () => {
+  try {
+    // POST请求
+    const postResponse = await fetch('https://httpbin.org/post', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        test: 'data',
+        timestamp: Date.now(),
+        source: 'mcp-test-extension'
+      })
+    });
+    const postData = await postResponse.json();
+    console.log('[Network Test] 📤 POST请求成功:', postData.json?.test);
+    
+  } catch (error) {
+    console.error('[Network Test] ❌ POST请求失败:', error.message);
+  }
+}, 60000);
+
 console.log('[Enhanced Background] ✅ v4.1初始化完成 - Week 1-4全功能 + Phase 1性能测试就绪');
+console.log('[Network Test] 🌐 网络测试增强已启用 - 每30/45/60秒发送测试请求');

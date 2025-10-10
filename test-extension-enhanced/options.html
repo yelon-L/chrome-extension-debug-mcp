@@ -199,6 +199,56 @@ setTimeout(() => {
     </div>
   </div>
 
+  <!-- 新增: 表单测试区域 (用于测试type工具) -->
+  <div class="section">
+    <h3>📝 表单测试区域</h3>
+    <p style="color: #666; margin-bottom: 15px;">
+      此区域用于测试MCP的type、click和evaluate工具
+    </p>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <label for="testInput1">测试输入框1:</label>
+        <input type="text" id="testInput1" class="test-input" placeholder="请输入文本" 
+               style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px;">
+        
+        <label for="testInput2">测试输入框2 (密码):</label>
+        <input type="password" id="testInput2" class="test-input" placeholder="请输入密码" 
+               style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px;">
+        
+        <label for="testTextarea">测试文本域:</label>
+        <textarea id="testTextarea" class="test-textarea" rows="3" placeholder="请输入多行文本" 
+                  style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+      </div>
+      
+      <div>
+        <label for="testSelect">测试下拉框:</label>
+        <select id="testSelect" class="test-select" 
+                style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px;">
+          <option value="">请选择</option>
+          <option value="option1">选项1</option>
+          <option value="option2">选项2</option>
+          <option value="option3">选项3</option>
+        </select>
+        
+        <label style="display: block; margin: 10px 0;">
+          <input type="checkbox" id="testCheckbox1" class="test-checkbox"> 测试复选框1
+        </label>
+        <label style="display: block; margin: 10px 0;">
+          <input type="checkbox" id="testCheckbox2" class="test-checkbox"> 测试复选框2
+        </label>
+        
+        <button id="testSubmit" class="btn btn-primary" style="margin-top: 10px;">提交测试表单</button>
+        <button id="clearForm" class="btn btn-secondary" style="margin-top: 10px;">清空表单</button>
+      </div>
+    </div>
+    
+    <div id="formResult" style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px; display: none;">
+      <strong>表单提交结果:</strong>
+      <pre id="formData" style="margin-top: 5px; white-space: pre-wrap;"></pre>
+    </div>
+  </div>
+
   <div class="section">
     <h3>🚀 测试控制</h3>
     
@@ -420,6 +470,38 @@ setTimeout(() => {
         
         URL.revokeObjectURL(url);
         appendLog('[Options] 📄 日志已导出');
+      });
+      
+      // 表单测试功能
+      document.getElementById('testSubmit')?.addEventListener('click', () => {
+        const formData = {
+          testInput1: document.getElementById('testInput1').value,
+          testInput2: document.getElementById('testInput2').value,
+          testTextarea: document.getElementById('testTextarea').value,
+          testSelect: document.getElementById('testSelect').value,
+          testCheckbox1: document.getElementById('testCheckbox1').checked,
+          testCheckbox2: document.getElementById('testCheckbox2').checked,
+          timestamp: new Date().toISOString()
+        };
+        
+        document.getElementById('formResult').style.display = 'block';
+        document.getElementById('formData').textContent = JSON.stringify(formData, null, 2);
+        
+        console.log('[Options] 📝 表单提交:', formData);
+        appendLog(`[Form] ✅ 表单提交成功 - ${Object.keys(formData).length}个字段`);
+      });
+      
+      document.getElementById('clearForm')?.addEventListener('click', () => {
+        document.getElementById('testInput1').value = '';
+        document.getElementById('testInput2').value = '';
+        document.getElementById('testTextarea').value = '';
+        document.getElementById('testSelect').value = '';
+        document.getElementById('testCheckbox1').checked = false;
+        document.getElementById('testCheckbox2').checked = false;
+        document.getElementById('formResult').style.display = 'none';
+        
+        console.log('[Options] 🧹 表单已清空');
+        appendLog('[Form] 🧹 表单已清空');
       });
     }
     

@@ -16,6 +16,9 @@ import { EvaluationHandler } from './handlers/EvaluationHandler.js';
 import { ExtensionHandler } from './handlers/ExtensionHandler.js';
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
+// Import tool definitions
+import { quickDebugTools } from './tools/quick-debug-tools.js';
+import { harTools } from './tools/har-tools.js';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[ChromeDebugServer]', ...args);
 /**
@@ -474,6 +477,10 @@ export class ChromeDebugServer {
                         required: ['extensionId', 'testUrl']
                     }
                 },
+                // Quick Debug Tools
+                ...quickDebugTools,
+                // HAR Export Tools
+                ...harTools,
             ],
         }));
         // Handler for executing tools - this is pure routing with mutex protection
@@ -525,10 +532,20 @@ export class ChromeDebugServer {
                         return await this.handleMonitorExtensionMessages(args);
                     case 'track_extension_api_calls':
                         return await this.handleTrackExtensionAPICalls(args);
+                    case 'track_extension_network':
+                        return await this.handleTrackExtensionNetwork(args);
                     case 'analyze_extension_performance':
                         return await this.handleAnalyzeExtensionPerformance(args);
                     case 'test_extension_on_multiple_pages':
                         return await this.handleTestExtensionOnMultiplePages(args);
+                    // Quick Debug Tools
+                    case 'quick_extension_debug':
+                        return await this.handleQuickExtensionDebug(args);
+                    case 'quick_performance_check':
+                        return await this.handleQuickPerformanceCheck(args);
+                    // HAR Export Tool
+                    case 'export_extension_network_har':
+                        return await this.handleExportExtensionNetworkHAR(args);
                     default:
                         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
                 }
@@ -667,10 +684,35 @@ export class ChromeDebugServer {
         };
     }
     // ===== Phase 1 性能分析功能处理器 =====
+    async handleTrackExtensionNetwork(args) {
+        const result = await this.extensionHandler.trackExtensionNetwork(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
     async handleAnalyzeExtensionPerformance(args) {
         const result = await this.extensionHandler.analyzeExtensionPerformance(args);
         return {
             content: [{ type: 'text', text: JSON.stringify(result) }]
+        };
+    }
+    // ===== 快捷调试工具处理器 =====
+    async handleQuickExtensionDebug(args) {
+        const result = await this.extensionHandler.quickExtensionDebug(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleQuickPerformanceCheck(args) {
+        const result = await this.extensionHandler.quickPerformanceCheck(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleExportExtensionNetworkHAR(args) {
+        const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         };
     }
     /**

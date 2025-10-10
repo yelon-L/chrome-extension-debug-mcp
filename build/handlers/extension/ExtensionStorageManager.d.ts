@@ -28,6 +28,15 @@ export declare class ExtensionStorageManager {
      */
     private detectStorageCapabilities;
     /**
+     * 唤醒Service Worker
+     * 通过发送简单的消息来激活休眠的Service Worker
+     */
+    private wakeUpServiceWorker;
+    /**
+     * 带重试机制的存储数据读取
+     */
+    private readExtensionStorageDataWithRetry;
+    /**
      * 读取扩展存储数据
      */
     private readExtensionStorageData;

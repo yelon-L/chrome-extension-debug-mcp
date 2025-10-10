@@ -30,6 +30,7 @@ export declare class ExtensionHandler {
     private elementLocator;
     private formHandler;
     private pageStateMonitor;
+    private quickDebugHandler;
     constructor(chromeManager: ChromeManager, pageManager: PageManager);
     private detector;
     /**
@@ -218,6 +219,22 @@ export declare class ExtensionHandler {
         message?: undefined;
         targets?: undefined;
         categories?: undefined;
+    }>;
+    /**
+     * 快速扩展调试（组合工具）
+     */
+    quickExtensionDebug(args: any): Promise<import("./QuickDebugHandler.js").QuickDebugResult>;
+    /**
+     * 快速性能检测（组合工具）
+     */
+    quickPerformanceCheck(args: any): Promise<import("./QuickDebugHandler.js").QuickPerformanceResult>;
+    /**
+     * 导出网络活动为HAR格式
+     */
+    exportExtensionNetworkHAR(args: any): Promise<{
+        harData: any;
+        savedPath?: string;
+        summary: any;
     }>;
 }
 //# sourceMappingURL=ExtensionHandler.d.ts.map

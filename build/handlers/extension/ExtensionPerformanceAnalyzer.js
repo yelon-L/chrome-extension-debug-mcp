@@ -6,7 +6,9 @@
  * - 对比有/无扩展的性能差异
  * - 计算扩展对页面性能的影响
  * - 生成性能优化建议
+ * - 集成Web Vitals实时测量
  */
+import { measureWebVitals, rateWebVital, calculateWebVitalsScore, generateWebVitalsRecommendations } from '../../utils/WebVitalsIntegration.js';
 export class ExtensionPerformanceAnalyzer {
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
@@ -43,8 +45,8 @@ export class ExtensionPerformanceAnalyzer {
             const deltaCWV = this.calculateCWVDelta(baselineCWV, extensionCWV);
             // 7. 计算影响
             const impact = this.calculateImpact(deltaMetrics, deltaCWV);
-            // 8. 生成建议
-            const recommendations = this.generateRecommendations(deltaMetrics, impact);
+            // 8. 生成建议（传递扩展CWV数据以生成更详细的建议）
+            const recommendations = this.generateRecommendations(deltaMetrics, impact, extensionCWV);
             // 9. 生成摘要
             const summary = this.generateSummary(deltaMetrics, impact);
             const result = {
@@ -161,7 +163,61 @@ export class ExtensionPerformanceAnalyzer {
         };
     }
     /**
-     * 计算Core Web Vitals
+     * 计算Core Web Vitals（增强版 - 结合trace events和实时测量）
+     */
+    async calculateCoreWebVitalsEnhanced(events, url) {
+        // 1. 从trace events中提取基础指标
+        const lcpEvent = events.find(e => e.name === 'largestContentfulPaint::Candidate');
+        const fidEvent = events.find(e => e.name === 'firstInputDelay');
+        const fcpEvent = events.find(e => e.name === 'firstContentfulPaint');
+        const navStart = events.find(e => e.name === 'navigationStart');
+        const startTime = navStart?.ts || 0;
+        let lcp = lcpEvent ? (lcpEvent.ts - startTime) / 1000 : 0;
+        let fid = fidEvent?.args?.data?.duration || 0;
+        const fcp = fcpEvent ? (fcpEvent.ts - startTime) / 1000 : 0;
+        // CLS需要特殊计算
+        const layoutShiftEvents = events.filter(e => e.name === 'LayoutShift');
+        let cls = layoutShiftEvents.reduce((sum, e) => sum + (e.args?.data?.score || 0), 0);
+        // TTFB（Time to First Byte）
+        const responseEvent = events.find(e => e.name === 'ResourceReceiveResponse');
+        const ttfb = responseEvent ? (responseEvent.ts - startTime) / 1000 : 0;
+        // 2. 如果可用，使用实时Web Vitals测量（更准确）
+        try {
+            const page = await this.pageManager.getActivePage();
+            if (page && url) {
+                const webVitals = await measureWebVitals(page);
+                // 使用实时测量的值（如果非零）
+                if (webVitals.lcp > 0)
+                    lcp = webVitals.lcp;
+                if (webVitals.fid > 0)
+                    fid = webVitals.fid;
+                if (webVitals.cls > 0)
+                    cls = webVitals.cls;
+            }
+        }
+        catch (error) {
+            console.log('[ExtensionPerformanceAnalyzer] 无法获取实时Web Vitals，使用trace数据');
+        }
+        // 3. 计算评分
+        const rating = {
+            lcp: rateWebVital('lcp', lcp),
+            fid: rateWebVital('fid', fid),
+            cls: rateWebVital('cls', cls)
+        };
+        // 4. 计算综合评分
+        const score = calculateWebVitalsScore({ lcp, fid, cls });
+        return {
+            lcp: parseFloat(lcp.toFixed(2)),
+            fid: parseFloat(fid.toFixed(2)),
+            cls: parseFloat(cls.toFixed(4)),
+            fcp: parseFloat(fcp.toFixed(2)),
+            ttfb: parseFloat(ttfb.toFixed(2)),
+            rating,
+            score
+        };
+    }
+    /**
+     * 计算Core Web Vitals（旧版 - 保留兼容性）
      */
     calculateCoreWebVitals(events) {
         // 查找关键事件
@@ -180,12 +236,21 @@ export class ExtensionPerformanceAnalyzer {
         // TTFB（Time to First Byte）
         const responseEvent = events.find(e => e.name === 'ResourceReceiveResponse');
         const ttfb = responseEvent ? (responseEvent.ts - startTime) / 1000 : 0;
+        // 添加评分
+        const rating = {
+            lcp: rateWebVital('lcp', lcp),
+            fid: rateWebVital('fid', fid),
+            cls: rateWebVital('cls', cls)
+        };
+        const score = calculateWebVitalsScore({ lcp, fid, cls });
         return {
             lcp: parseFloat(lcp.toFixed(2)),
             fid: parseFloat(fid.toFixed(2)),
             cls: parseFloat(cls.toFixed(4)),
             fcp: parseFloat(fcp.toFixed(2)),
-            ttfb: parseFloat(ttfb.toFixed(2))
+            ttfb: parseFloat(ttfb.toFixed(2)),
+            rating,
+            score
         };
     }
     /**
@@ -230,9 +295,9 @@ export class ExtensionPerformanceAnalyzer {
         };
     }
     /**
-     * 生成优化建议
+     * 生成优化建议（增强版 - 包含Web Vitals建议）
      */
-    generateRecommendations(delta, impact) {
+    generateRecommendations(delta, impact, extensionCWV) {
         const recommendations = [];
         // CPU使用率建议
         if (delta.cpuUsage > 10) {
@@ -266,6 +331,15 @@ export class ExtensionPerformanceAnalyzer {
         // CLS影响建议
         if (impact.cwvImpact.cls > 0.1) {
             recommendations.push(`⚠️ CLS增加${impact.cwvImpact.cls.toFixed(3)}，扩展可能导致布局偏移，检查动态插入的元素`);
+        }
+        // 添加Web Vitals专业建议
+        if (extensionCWV) {
+            const webVitalsRecommendations = generateWebVitalsRecommendations({
+                lcp: extensionCWV.lcp,
+                fid: extensionCWV.fid,
+                cls: extensionCWV.cls
+            });
+            recommendations.push(...webVitalsRecommendations);
         }
         // 如果影响很小，给出正面反馈
         if (recommendations.length === 0) {

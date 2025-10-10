@@ -11,6 +11,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 import { readFile } from 'fs/promises';
 import { LaunchChromeArgs, AttachArgs, ConsoleAPICalledEvent, ExtensionLogEntry } from '../types/index.js';
+import { ErrorHelper } from '../utils/ErrorHelper.js';
 
 // Chrome Remote Interface types
 interface Client {

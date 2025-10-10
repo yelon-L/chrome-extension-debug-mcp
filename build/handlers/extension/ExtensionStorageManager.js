@@ -32,10 +32,17 @@ export class ExtensionStorageManager {
             if (!switchResult.success) {
                 throw new McpError(ErrorCode.InternalError, `Failed to switch to context for storage inspection`);
             }
+            // 2.5. 尝试唤醒Service Worker（如果是Service Worker上下文）
+            if (targetContext.contextType === 'background' && targetContext.url.includes('service_worker')) {
+                log('Detected Service Worker context, attempting to wake it up...');
+                await this.wakeUpServiceWorker(extensionId, switchResult.sessionId);
+                // 等待Service Worker完全唤醒
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
             // 3. 检查存储访问能力
             const capabilities = await this.detectStorageCapabilities(targetContext, switchResult.sessionId);
-            // 4. 读取存储数据
-            const storageData = await this.readExtensionStorageData(extensionId, storageTypes, keys, switchResult.sessionId);
+            // 4. 读取存储数据（带重试机制）
+            const storageData = await this.readExtensionStorageDataWithRetry(extensionId, storageTypes, keys, switchResult.sessionId);
             const response = {
                 extensionId,
                 storageData,
@@ -192,6 +199,78 @@ export class ExtensionStorageManager {
         return capabilities;
     }
     /**
+     * 唤醒Service Worker
+     * 通过发送简单的消息来激活休眠的Service Worker
+     */
+    async wakeUpServiceWorker(extensionId, sessionId) {
+        const cdpClient = this.chromeManager.getCdpClient();
+        if (!cdpClient)
+            return;
+        try {
+            // 方法1: 尝试访问chrome.storage API来唤醒
+            const wakeUpScript = `
+        new Promise((resolve) => {
+          // 简单的存储访问操作来唤醒Service Worker
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get(null, () => {
+              resolve({ awake: true });
+            });
+          } else {
+            resolve({ awake: false });
+          }
+        })
+      `;
+            await cdpClient.Runtime.evaluate({
+                expression: wakeUpScript,
+                returnByValue: true,
+                awaitPromise: true
+            }, sessionId);
+            log('Service Worker wake-up attempt completed');
+        }
+        catch (e) {
+            log('Service Worker wake-up failed (non-critical):', e);
+            // 唤醒失败不是致命错误，继续执行
+        }
+    }
+    /**
+     * 带重试机制的存储数据读取
+     */
+    async readExtensionStorageDataWithRetry(extensionId, storageTypes, keys, sessionId, maxRetries = 2) {
+        let lastError = null;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                log(`Storage read attempt ${attempt}/${maxRetries} for extension ${extensionId}`);
+                const result = await this.readExtensionStorageData(extensionId, storageTypes, keys, sessionId);
+                // 如果成功读取到数据（至少有一个存储类型有数据），直接返回
+                const hasData = result.some(storage => Object.keys(storage.data).length > 0);
+                if (hasData || attempt === maxRetries) {
+                    return result;
+                }
+                // 如果没有数据且不是最后一次尝试，等待后重试
+                if (attempt < maxRetries) {
+                    log(`No data found, retrying after 1 second...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            catch (error) {
+                lastError = error;
+                log(`Storage read attempt ${attempt}/${maxRetries} failed:`, error);
+                if (attempt < maxRetries) {
+                    // 等待后重试
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+        // 所有重试都失败，返回空数据而不抛出错误（优雅降级）
+        log(`All ${maxRetries} storage read attempts failed, returning empty data`);
+        return storageTypes.map(type => ({
+            type: type,
+            data: {},
+            quota: undefined,
+            lastModified: Date.now()
+        }));
+    }
+    /**
      * 读取扩展存储数据
      */
     async readExtensionStorageData(extensionId, storageTypes, keys, sessionId) {
@@ -249,9 +328,9 @@ export class ExtensionStorageManager {
             });
           })
         `;
-                // 添加5秒超时控制
+                // 添加10秒超时控制（Service Worker可能需要更长唤醒时间）
                 const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error(`Storage ${storageType} read timeout`)), 5000);
+                    setTimeout(() => reject(new Error(`Storage ${storageType} read timeout`)), 10000);
                 });
                 const evalPromise = cdpClient.Runtime.evaluate({
                     expression: readScript,

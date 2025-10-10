@@ -65,6 +65,7 @@ export interface NetworkAnalysis {
   failedRequests: NetworkRequest[];  // 失败的请求
   suspiciousRequests: NetworkRequest[]; // 可疑请求
   thirdPartyDomains: string[];       // 第三方域名列表
+  requests?: NetworkRequest[];       // 所有请求（可选，用于HAR导出）
   statistics: {
     cachedRequests: number;
     failedRequests: number;

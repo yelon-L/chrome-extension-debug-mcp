@@ -63,6 +63,7 @@ export interface NetworkAnalysis {
     failedRequests: NetworkRequest[];
     suspiciousRequests: NetworkRequest[];
     thirdPartyDomains: string[];
+    requests?: NetworkRequest[];
     statistics: {
         cachedRequests: number;
         failedRequests: number;

@@ -151,7 +151,31 @@ export declare class ChromeDebugServer {
             text: string;
         }[];
     }>;
+    handleTrackExtensionNetwork(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
     handleAnalyzeExtensionPerformance(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleQuickExtensionDebug(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleQuickPerformanceCheck(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleExportExtensionNetworkHAR(args: any): Promise<{
         content: {
             type: string;
             text: string;

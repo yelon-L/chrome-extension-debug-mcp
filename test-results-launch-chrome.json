@@ -1,0 +1,62 @@
+{
+  "mode": "launch_chrome",
+  "startTime": 1760064459585,
+  "tests": [
+    {
+      "name": "01. launch_chrome",
+      "description": "启动Chrome并加载test-extension-enhanced扩展",
+      "startTime": 1760064459591,
+      "status": "passed",
+      "duration": 5322,
+      "error": null,
+      "result": {
+        "message": "Chrome启动成功，扩展已加载"
+      }
+    },
+    {
+      "name": "02. list_tabs",
+      "description": "列出所有打开的标签页",
+      "startTime": 1760064464914,
+      "status": "passed",
+      "duration": 2,
+      "error": null,
+      "result": [
+        {
+          "id": "tab_1",
+          "url": "https://example.com/",
+          "title": "Example Domain",
+          "active": false
+        }
+      ]
+    },
+    {
+      "name": "03. new_tab",
+      "description": "创建新标签页 (httpbin.org/html)",
+      "startTime": 1760064464916,
+      "status": "passed",
+      "duration": 4117,
+      "error": null,
+      "result": {
+        "id": "tab_2",
+        "url": "https://httpbin.org/html"
+      }
+    },
+    {
+      "name": "04. switch_tab",
+      "description": "切换回主标签页",
+      "startTime": 1760064469033,
+      "status": "failed",
+      "duration": 1,
+      "error": "没有可切换的标签页ID",
+      "result": null
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0
+  },
+  "endTime": 1760064469034,
+  "totalDuration": 9449
+}

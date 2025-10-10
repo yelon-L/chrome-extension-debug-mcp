@@ -28,6 +28,12 @@ export interface CoreWebVitals {
   cls: number;  // Cumulative Layout Shift (score)
   fcp: number;  // First Contentful Paint (ms)
   ttfb: number; // Time to First Byte (ms)
+  rating?: {    // Web Vitals评分
+    lcp: 'good' | 'needs-improvement' | 'poor';
+    fid: 'good' | 'needs-improvement' | 'poor';
+    cls: 'good' | 'needs-improvement' | 'poor';
+  };
+  score?: number; // 综合评分 (0-100)
 }
 
 export interface PerformanceImpact {
