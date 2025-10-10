@@ -172,7 +172,9 @@ async function main() {
     }
 }
 // Run if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Cross-platform check using pathToFileURL
+import { pathToFileURL } from 'url';
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     main();
 }
 export { ChromeDebugStdioServer };

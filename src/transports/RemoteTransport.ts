@@ -196,7 +196,23 @@ export class RemoteTransport {
       // For now, handle basic methods directly
       // TODO: Integrate with actual MCP server message routing
       
-      if (message.method === 'tools/list') {
+      if (message.method === 'initialize') {
+        // Handle MCP initialization
+        sendResponse({
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            protocolVersion: '2024-11-05',
+            capabilities: {
+              tools: {},
+            },
+            serverInfo: {
+              name: 'chrome-extension-debug-mcp',
+              version: '4.0.0',
+            },
+          }
+        });
+      } else if (message.method === 'tools/list') {
         // Use actual server tools if ChromeDebugServer is available
         if (this.chromeDebugServer) {
           try {

@@ -133,6 +133,46 @@ class SafeQuickTransportTester {
     console.log(`  ⏳ 等待服务器初始化 (${SERVER_INIT_WAIT}ms)...`);
     await this.sleep(SERVER_INIT_WAIT);
     
+    // Step 1: MCP 协议初始化握手
+    console.log('\n  📡 Step 1: MCP Protocol Initialization...');
+    try {
+      const initResponse = await sendRequest('initialize', {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: {
+          name: 'test-client',
+          version: '1.0.0'
+        }
+      });
+      
+      if (initResponse.result) {
+        console.log('  ✅ MCP initialized successfully');
+        console.log(`  📋 Server: ${initResponse.result.serverInfo?.name || 'unknown'}`);
+      } else if (initResponse.error) {
+        console.log(`  ⚠️  MCP init warning: ${initResponse.error.message}`);
+      }
+    } catch (error) {
+      console.log(`  ⚠️  MCP init failed: ${error.message} (continuing anyway)`);
+    }
+    
+    // Step 2: 列出可用工具
+    console.log('\n  📡 Step 2: List Available Tools...');
+    try {
+      const toolsResponse = await sendRequest('tools/list', {});
+      
+      if (toolsResponse.result && toolsResponse.result.tools) {
+        const toolNames = toolsResponse.result.tools.map(t => t.name);
+        console.log(`  ✅ Found ${toolNames.length} tools`);
+        console.log(`  📋 Tools: ${toolNames.slice(0, 5).join(', ')}...`);
+      } else if (toolsResponse.error) {
+        console.log(`  ⚠️  Tools list error: ${toolsResponse.error.message}`);
+      }
+    } catch (error) {
+      console.log(`  ⚠️  Tools list failed: ${error.message}`);
+    }
+    
+    console.log('\n  📡 Step 3: Testing Core Tools...\n');
+    
     // 测试核心工具
     const tests = [
       { name: 'attach_to_chrome', params: { port: 9222 } },
@@ -192,7 +232,8 @@ class SafeQuickTransportTester {
     console.log('\n📡 2. Testing RemoteTransport...\n');
     
     const serverPath = path.join(__dirname, '../build/remote.js');
-    const server = spawn('node', [serverPath, '--port', '3000', '--chrome-port', '9222'], {
+    const PORT = 3333;  // 避免端口冲突
+    const server = spawn('node', [serverPath, `--port=${PORT}`], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     
@@ -202,7 +243,7 @@ class SafeQuickTransportTester {
     console.log(`  ⏳ 等待服务器初始化 (${SERVER_INIT_WAIT}ms)...`);
     await this.sleep(SERVER_INIT_WAIT);
     
-    const serverUrl = 'http://localhost:3000';
+    const serverUrl = `http://localhost:${PORT}`;
     let requestId = 1;
     
     const sendRequest = async (method, params) => {
@@ -232,6 +273,46 @@ class SafeQuickTransportTester {
         throw error;
       }
     };
+    
+    // Step 1: MCP 协议初始化握手
+    console.log('\n  📡 Step 1: MCP Protocol Initialization...');
+    try {
+      const initResponse = await sendRequest('initialize', {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: {
+          name: 'test-client',
+          version: '1.0.0'
+        }
+      });
+      
+      if (initResponse.result) {
+        console.log('  ✅ MCP initialized successfully');
+        console.log(`  📋 Server: ${initResponse.result.serverInfo?.name || 'unknown'}`);
+      } else if (initResponse.error) {
+        console.log(`  ⚠️  MCP init warning: ${initResponse.error.message}`);
+      }
+    } catch (error) {
+      console.log(`  ⚠️  MCP init failed: ${error.message} (continuing anyway)`);
+    }
+    
+    // Step 2: 列出可用工具
+    console.log('\n  📡 Step 2: List Available Tools...');
+    try {
+      const toolsResponse = await sendRequest('tools/list', {});
+      
+      if (toolsResponse.result && toolsResponse.result.tools) {
+        const toolNames = toolsResponse.result.tools.map(t => t.name);
+        console.log(`  ✅ Found ${toolNames.length} tools`);
+        console.log(`  📋 Tools: ${toolNames.slice(0, 5).join(', ')}...`);
+      } else if (toolsResponse.error) {
+        console.log(`  ⚠️  Tools list error: ${toolsResponse.error.message}`);
+      }
+    } catch (error) {
+      console.log(`  ⚠️  Tools list failed: ${error.message}`);
+    }
+    
+    console.log('\n  📡 Step 3: Testing Core Tools...\n');
     
     // 测试核心工具
     const tests = [

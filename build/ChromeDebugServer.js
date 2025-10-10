@@ -5,7 +5,7 @@
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema, ErrorCode, McpError, } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema, InitializeRequestSchema, ErrorCode, McpError, } from '@modelcontextprotocol/sdk/types.js';
 // Import remote transport
 import { RemoteTransport } from './transports/RemoteTransport.js';
 // Import modular components
@@ -87,6 +87,17 @@ export class ChromeDebugServer {
      * This method only handles routing - business logic is in modules.
      */
     setupToolHandlers() {
+        // Handler for initialization (required by MCP protocol)
+        this.server.setRequestHandler(InitializeRequestSchema, async () => ({
+            protocolVersion: '2024-11-05',
+            capabilities: {
+                tools: {},
+            },
+            serverInfo: {
+                name: 'chrome-extension-debug-mcp',
+                version: '4.0.0',
+            },
+        }));
         // Handler for listing available tools
         this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
             tools: [
