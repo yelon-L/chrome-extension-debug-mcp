@@ -7,6 +7,7 @@ import { PageManager } from '../managers/PageManager.js';
 import { InteractionHandler } from '../handlers/InteractionHandler.js';
 import { EvaluationHandler } from '../handlers/EvaluationHandler.js';
 import { ExtensionHandler } from '../handlers/ExtensionHandler.js';
+import { SnapshotGenerator } from '../utils/SnapshotGenerator.js';
 /**
  * Unified context that all tools and handlers can access
  */
@@ -35,6 +36,8 @@ export class McpContext {
             currentExtensionContext: null,
             consoleLogs: [],
             connectionHealth: 'unhealthy',
+            currentSnapshot: null,
+            snapshotGenerator: null,
             sessionId: this.generateSessionId(),
             startTime: Date.now(),
             lastActivity: Date.now()
@@ -185,6 +188,42 @@ export class McpContext {
         };
     }
     /**
+     * Phase 2.1: Set current snapshot
+     */
+    setCurrentSnapshot(snapshot) {
+        this.state.currentSnapshot = snapshot;
+    }
+    /**
+     * Phase 2.1: Get current snapshot
+     */
+    getCurrentSnapshot() {
+        return this.state.currentSnapshot;
+    }
+    /**
+     * Phase 2.1: Get or create snapshot generator
+     */
+    getOrCreateSnapshotGenerator(page) {
+        if (!this.state.snapshotGenerator) {
+            this.state.snapshotGenerator = new SnapshotGenerator(page);
+        }
+        return this.state.snapshotGenerator;
+    }
+    /**
+     * Phase 2.1: Get snapshot generator
+     */
+    getSnapshotGenerator() {
+        return this.state.snapshotGenerator;
+    }
+    /**
+     * Phase 2.1: Clear snapshot
+     */
+    clearSnapshot() {
+        this.state.currentSnapshot = null;
+        if (this.state.snapshotGenerator) {
+            this.state.snapshotGenerator.clear();
+        }
+    }
+    /**
      * Cleanup resources
      */
     async cleanup() {
@@ -192,6 +231,9 @@ export class McpContext {
             // Clear caches
             this.state.extensionCache.clear();
             this.state.consoleLogs = [];
+            // Clear snapshots
+            this.clearSnapshot();
+            this.state.snapshotGenerator = null;
             // Cleanup managers
             if (this.chromeManager.getCdpClient()) {
                 await this.chromeManager.getCdpClient()?.close();

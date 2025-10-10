@@ -22,6 +22,8 @@ import { PageManager } from './managers/PageManager.js';
 import { InteractionHandler } from './handlers/InteractionHandler.js';
 import { EvaluationHandler } from './handlers/EvaluationHandler.js';
 import { ExtensionHandler } from './handlers/ExtensionHandler.js';
+import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
+import { McpContext } from './context/McpContext.js';
 
 // Import types
 import {
@@ -68,6 +70,10 @@ export class ChromeDebugServer {
   private interactionHandler: InteractionHandler;
   private evaluationHandler: EvaluationHandler;
   private extensionHandler: ExtensionHandler;
+  
+  // Phase 2.1: Snapshot & UID Interaction
+  private mcpContext: McpContext;
+  public uidHandler: UIDInteractionHandler;
 
   constructor() {
     // Initialize MCP server with basic configuration
@@ -92,6 +98,10 @@ export class ChromeDebugServer {
     this.interactionHandler = new InteractionHandler(this.pageManager);
     this.evaluationHandler = new EvaluationHandler(this.pageManager);
     this.extensionHandler = new ExtensionHandler(this.chromeManager, this.pageManager);
+    
+    // Phase 2.1: Initialize Context and UID Handler
+    this.mcpContext = new McpContext();
+    this.uidHandler = new UIDInteractionHandler(this.pageManager, this.mcpContext);
 
     this.setupToolHandlers();
     this.server.onerror = (error) => console.error('[MCP Error]', error);
@@ -714,6 +724,15 @@ export class ChromeDebugServer {
             return await this.handleTestExtensionConditions(args as any);
           case 'test_extension_on_multiple_pages':
             return await this.handleTestExtensionOnMultiplePages(args as any);
+          // Phase 2.1: DOM Snapshot & UID Locator Tools
+          case 'take_snapshot':
+            return await this.handleTakeSnapshot(args as any);
+          case 'click_by_uid':
+            return await this.handleClickByUid(args as any);
+          case 'fill_by_uid':
+            return await this.handleFillByUid(args as any);
+          case 'hover_by_uid':
+            return await this.handleHoverByUid(args as any);
           // Quick Debug Tools
           case 'quick_extension_debug':
             return await this.handleQuickExtensionDebug(args as any);
@@ -966,6 +985,36 @@ export class ChromeDebugServer {
     timeout?: number;
   }) {
     const result = await this.extensionHandler.testUnderConditions(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  // ===== Phase 2.1: DOM Snapshot & UID Locator Handlers =====
+
+  public async handleTakeSnapshot(args: any) {
+    const result = await this.uidHandler.takeSnapshot(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleClickByUid(args: any) {
+    const result = await this.uidHandler.clickByUid(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleFillByUid(args: any) {
+    const result = await this.uidHandler.fillByUid(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleHoverByUid(args: any) {
+    const result = await this.uidHandler.hoverByUid(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };

@@ -9,6 +9,8 @@ import { PageManager } from '../managers/PageManager.js';
 import { InteractionHandler } from '../handlers/InteractionHandler.js';
 import { EvaluationHandler } from '../handlers/EvaluationHandler.js';
 import { ExtensionHandler } from '../handlers/ExtensionHandler.js';
+import { SnapshotGenerator } from '../utils/SnapshotGenerator.js';
+import type { PageSnapshot } from '../types/snapshot-types.js';
 
 export interface ContextState {
   // Browser state
@@ -23,6 +25,10 @@ export interface ContextState {
   // Debug state
   consoleLogs: string[];
   connectionHealth: 'healthy' | 'unhealthy' | 'recovering';
+  
+  // Phase 2.1: Snapshot state
+  currentSnapshot: PageSnapshot | null;
+  snapshotGenerator: SnapshotGenerator | null;
   
   // Session state
   sessionId: string;
@@ -61,6 +67,8 @@ export class McpContext {
       currentExtensionContext: null,
       consoleLogs: [],
       connectionHealth: 'unhealthy',
+      currentSnapshot: null,
+      snapshotGenerator: null,
       sessionId: this.generateSessionId(),
       startTime: Date.now(),
       lastActivity: Date.now()
@@ -242,6 +250,47 @@ export class McpContext {
   }
   
   /**
+   * Phase 2.1: Set current snapshot
+   */
+  setCurrentSnapshot(snapshot: PageSnapshot | null): void {
+    this.state.currentSnapshot = snapshot;
+  }
+
+  /**
+   * Phase 2.1: Get current snapshot
+   */
+  getCurrentSnapshot(): PageSnapshot | null {
+    return this.state.currentSnapshot;
+  }
+
+  /**
+   * Phase 2.1: Get or create snapshot generator
+   */
+  getOrCreateSnapshotGenerator(page: Page): SnapshotGenerator {
+    if (!this.state.snapshotGenerator) {
+      this.state.snapshotGenerator = new SnapshotGenerator(page);
+    }
+    return this.state.snapshotGenerator;
+  }
+
+  /**
+   * Phase 2.1: Get snapshot generator
+   */
+  getSnapshotGenerator(): SnapshotGenerator | null {
+    return this.state.snapshotGenerator;
+  }
+
+  /**
+   * Phase 2.1: Clear snapshot
+   */
+  clearSnapshot(): void {
+    this.state.currentSnapshot = null;
+    if (this.state.snapshotGenerator) {
+      this.state.snapshotGenerator.clear();
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
@@ -249,6 +298,10 @@ export class McpContext {
       // Clear caches
       this.state.extensionCache.clear();
       this.state.consoleLogs = [];
+      
+      // Clear snapshots
+      this.clearSnapshot();
+      this.state.snapshotGenerator = null;
       
       // Cleanup managers
       if (this.chromeManager.getCdpClient()) {

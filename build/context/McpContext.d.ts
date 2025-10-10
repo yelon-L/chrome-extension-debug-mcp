@@ -8,6 +8,8 @@ import { PageManager } from '../managers/PageManager.js';
 import { InteractionHandler } from '../handlers/InteractionHandler.js';
 import { EvaluationHandler } from '../handlers/EvaluationHandler.js';
 import { ExtensionHandler } from '../handlers/ExtensionHandler.js';
+import { SnapshotGenerator } from '../utils/SnapshotGenerator.js';
+import type { PageSnapshot } from '../types/snapshot-types.js';
 export interface ContextState {
     browser: any | null;
     selectedPageIndex: number;
@@ -16,6 +18,8 @@ export interface ContextState {
     currentExtensionContext: string | null;
     consoleLogs: string[];
     connectionHealth: 'healthy' | 'unhealthy' | 'recovering';
+    currentSnapshot: PageSnapshot | null;
+    snapshotGenerator: SnapshotGenerator | null;
     sessionId: string;
     startTime: number;
     lastActivity: number;
@@ -107,6 +111,26 @@ export declare class McpContext {
         consoleLogs: number;
         connectionHealth: any;
     };
+    /**
+     * Phase 2.1: Set current snapshot
+     */
+    setCurrentSnapshot(snapshot: PageSnapshot | null): void;
+    /**
+     * Phase 2.1: Get current snapshot
+     */
+    getCurrentSnapshot(): PageSnapshot | null;
+    /**
+     * Phase 2.1: Get or create snapshot generator
+     */
+    getOrCreateSnapshotGenerator(page: Page): SnapshotGenerator;
+    /**
+     * Phase 2.1: Get snapshot generator
+     */
+    getSnapshotGenerator(): SnapshotGenerator | null;
+    /**
+     * Phase 2.1: Clear snapshot
+     */
+    clearSnapshot(): void;
     /**
      * Cleanup resources
      */
