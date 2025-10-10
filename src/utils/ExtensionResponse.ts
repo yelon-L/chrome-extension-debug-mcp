@@ -233,7 +233,7 @@ export class ExtensionResponse {
       for (let i = 0; i < this.context.tabs.length; i++) {
         const tab = this.context.tabs[i];
         const selected = i === 0 ? ' [selected]' : '';
-        response.push(`${i}: ${tab.url()}${selected}`);
+        response.push(`${i}: ${tab.url}${selected}`);
       }
     }
 

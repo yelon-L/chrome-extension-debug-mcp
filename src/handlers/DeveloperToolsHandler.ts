@@ -264,21 +264,27 @@ export class DeveloperToolsHandler {
    * 获取扩展manifest
    */
   private async getExtensionManifest(extensionId: string): Promise<any> {
-    const page = this.pageManager.getCurrentPage();
-    if (!page) {
-      throw new Error('No active page');
-    }
-
     try {
-      // 尝试在扩展上下文中获取manifest
-      const manifest = await page.evaluate(() => {
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-          return chrome.runtime.getManifest();
-        }
+      // 直接使用ExtensionDetector获取扩展信息
+      const { ExtensionDetector } = await import('./extension/ExtensionDetector.js');
+      const detector = new ExtensionDetector(this.chromeManager);
+      const extensions = await detector.listExtensions({});
+      
+      const extension = extensions.find(ext => ext.id === extensionId);
+      if (!extension) {
+        console.error(`[DeveloperToolsHandler] Extension ${extensionId} not found`);
         return null;
-      });
+      }
 
-      return manifest;
+      // 从扩展信息中提取manifest相关数据
+      return {
+        name: extension.name,
+        version: extension.version || '1.0.0',
+        description: extension.description || '',
+        manifest_version: extension.manifestVersion || 3,
+        permissions: extension.permissions || [],
+        host_permissions: extension.hostPermissions || []
+      };
     } catch (error) {
       console.error('[DeveloperToolsHandler] 获取manifest失败:', error);
       return null;
