@@ -6,6 +6,7 @@
 import type { Page, ElementHandle } from 'puppeteer-core';
 import type { PageManager } from '../managers/PageManager.js';
 import type { McpContext } from '../context/McpContext.js';
+import type { DOMSnapshotHandler } from './DOMSnapshotHandler.js';
 import type {
   SnapshotOptions,
   SnapshotResult,
@@ -17,14 +18,17 @@ import type {
 export class UIDInteractionHandler {
   private pageManager: PageManager;
   private context: McpContext;
+  private snapshotHandler?: DOMSnapshotHandler;
 
-  constructor(pageManager: PageManager, context: McpContext) {
+  constructor(pageManager: PageManager, context: McpContext, snapshotHandler?: DOMSnapshotHandler) {
     this.pageManager = pageManager;
     this.context = context;
+    this.snapshotHandler = snapshotHandler;
   }
 
   /**
    * 生成DOM快照
+   * Phase 1.3: Now uses DOMSnapshotHandler for better performance
    */
   async takeSnapshot(options: SnapshotOptions = {}): Promise<SnapshotResult> {
     console.log('[UIDInteractionHandler] 生成DOM快照...');
@@ -38,6 +42,37 @@ export class UIDInteractionHandler {
     }
 
     try {
+      // Phase 1.3: Use new DOMSnapshotHandler if available
+      if (this.snapshotHandler) {
+        console.log('[UIDInteractionHandler] 使用DOMSnapshotHandler (优化版)');
+        const { snapshot: textSnapshot, snapshotId, uidMap } = await this.snapshotHandler.createTextSnapshot(page);
+        
+        // Convert to PageSnapshot format (compatible with existing code)
+        const pageSnapshot: any = {
+          url: page.url(),
+          title: await page.title(),
+          timestamp: Date.now(),
+          elements: [],  // Not used with DOMSnapshotHandler
+          uidMap: uidMap as any,  // Type compatibility
+          textRepresentation: textSnapshot
+        };
+        
+        const result: SnapshotResult = {
+          success: true,
+          snapshot: pageSnapshot,
+          textRepresentation: textSnapshot,
+          elementCount: uidMap.size
+        };
+        
+        // 保存到context
+        this.context.setCurrentSnapshot(pageSnapshot);
+        console.log(`[UIDInteractionHandler] 快照已保存 (DOMSnapshotHandler, 元素: ${result.elementCount})`);
+        
+        return result;
+      }
+      
+      // Fallback to old SnapshotGenerator
+      console.log('[UIDInteractionHandler] 使用SnapshotGenerator (兼容模式)');
       const generator = this.context.getOrCreateSnapshotGenerator(page);
       const result = await generator.generateSnapshot(options);
 

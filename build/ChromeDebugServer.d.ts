@@ -31,6 +31,8 @@ export declare class ChromeDebugServer {
     private suggestionEngine;
     private metricsCollector;
     private metricsPersistence;
+    private snapshotHandler;
+    private waitForHelper?;
     constructor();
     /**
      * Sets up handlers for all supported MCP tools.
@@ -56,89 +58,29 @@ export declare class ChromeDebugServer {
             text: string;
         }>;
     }>;
-    handleClick(args: ClickArgs): Promise<{
-        content: Array<{
-            type: string;
-            text: string;
-        }>;
-    }>;
-    handleType(args: TypeArgs): Promise<{
-        content: Array<{
-            type: string;
-            text: string;
-        }>;
-    }>;
-    handleScreenshot(args: ScreenshotArgs): Promise<{
-        content: Array<{
-            type: string;
-            text: string;
-        }>;
-    }>;
+    handleClick(args: ClickArgs): Promise<any>;
+    handleType(args: TypeArgs): Promise<any>;
+    handleScreenshot(args: ScreenshotArgs): Promise<any>;
     handleListTabs(): Promise<any>;
-    handleNewTab(args: NewTabArgs): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleSwitchTab(args: SwitchTabArgs): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleCloseTab(args: CloseTabArgs): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleNewTab(args: NewTabArgs): Promise<any>;
+    handleSwitchTab(args: SwitchTabArgs): Promise<any>;
+    handleCloseTab(args: CloseTabArgs): Promise<any>;
     handleListExtensions(args: any): Promise<any>;
     handleGetExtensionLogs(args: any): Promise<any>;
-    handleInjectContentScript(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleInjectContentScript(args: any): Promise<any>;
     handleContentScriptStatus(args: any): Promise<any>;
     handleListExtensionContexts(args: any): Promise<any>;
-    handleSwitchExtensionContext(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleSwitchExtensionContext(args: any): Promise<any>;
     handleInspectExtensionStorage(args: any): Promise<any>;
     handleMonitorExtensionMessages(args: any): Promise<any>;
     handleTrackExtensionAPICalls(args: any): Promise<any>;
     handleTestExtensionOnMultiplePages(args: any): Promise<any>;
-    handleTrackExtensionNetwork(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleTrackExtensionNetwork(args: any): Promise<any>;
     handleListExtensionRequests(args: any): Promise<any>;
     handleGetExtensionRequestDetails(args: any): Promise<any>;
-    handleExportExtensionNetworkHAR(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleAnalyzeExtensionNetwork(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleAnalyzeExtensionPerformance(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleExportExtensionNetworkHAR(args: any): Promise<any>;
+    handleAnalyzeExtensionNetwork(args: any): Promise<any>;
+    handleAnalyzeExtensionPerformance(args: any): Promise<any>;
     handlePerformanceGetInsights(args: {
         insightName: string;
     }): Promise<any>;
@@ -146,87 +88,37 @@ export declare class ChromeDebugServer {
     handleEmulateCPU(args: {
         rate: number;
         extensionId?: string;
-    }): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    }): Promise<any>;
     handleEmulateNetwork(args: {
         condition: any;
         extensionId?: string;
-    }): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    }): Promise<any>;
     handleTestExtensionConditions(args: {
         extensionId: string;
         testUrl: string;
         timeout?: number;
     }): Promise<any>;
     handleTakeSnapshot(args: any): Promise<any>;
-    handleClickByUid(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleFillByUid(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleHoverByUid(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleHoverElement(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleDragElement(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleFillForm(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleUploadFile(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleDialog(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
-    handleWaitForElement(args: any): Promise<{
-        content: {
-            type: string;
-            text: string;
-        }[];
-    }>;
+    handleClickByUid(args: any): Promise<any>;
+    handleFillByUid(args: any): Promise<any>;
+    handleHoverByUid(args: any): Promise<any>;
+    handleHoverElement(args: any): Promise<any>;
+    handleDragElement(args: any): Promise<any>;
+    handleFillForm(args: any): Promise<any>;
+    handleUploadFile(args: any): Promise<any>;
+    handleDialog(args: any): Promise<any>;
+    handleWaitForElement(args: any): Promise<any>;
     handleWaitForExtensionReady(args: any): Promise<any>;
     handleCheckExtensionPermissions(args: any): Promise<any>;
     handleAuditExtensionSecurity(args: any): Promise<any>;
     handleCheckExtensionUpdates(args: any): Promise<any>;
     handleQuickExtensionDebug(args: any): Promise<any>;
     handleQuickPerformanceCheck(args: any): Promise<any>;
+    /**
+     * Architecture Upgrade: Unified tool execution with Response Builder
+     * This is the chrome-devtools-mcp pattern
+     */
+    private executeToolWithResponse;
     /**
      * Build tool response with configuration-driven context and suggestions
      */
@@ -243,6 +135,24 @@ export declare class ChromeDebugServer {
      * Starts the MCP server with specified transport mode.
      */
     run(transportType?: TransportType, config?: RemoteMCPConfig): Promise<void>;
+    handleWaitFor(args: {
+        text: string;
+        timeout?: number;
+    }): Promise<any>;
+    handleNavigatePageHistory(args: {
+        direction: 'back' | 'forward';
+        steps?: number;
+    }): Promise<any>;
+    handleResizePage(args: {
+        width?: number;
+        height?: number;
+        preset?: string;
+    }): Promise<any>;
+    handleRunScript(args: {
+        script: string;
+        uid?: string;
+        returnValue?: boolean;
+    }): Promise<any>;
     /**
      * Performs cleanup when shutting down the server.
      */

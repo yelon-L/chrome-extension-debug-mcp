@@ -8,6 +8,7 @@
     "start": "node build/main.js",
     "start:remote": "node build/remote.js",
     "start:legacy": "node build/index.js",
+    "remote": "node build/remote.js",
     "dev": "tsc && node build/main.js",
     "dev:remote": "tsc && node build/remote.js",
     "dev:legacy": "tsc && node build/index.js"

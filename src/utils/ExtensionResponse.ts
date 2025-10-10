@@ -25,6 +25,8 @@ export interface ExtensionResponseContext {
 
 export class ExtensionResponse {
   private textLines: string[] = [];
+  
+  // Legacy flags (kept for backward compatibility)
   private includeExtensionStatus = false;
   private includePageContext = false;
   private includeTabsList = false;
@@ -35,14 +37,75 @@ export class ExtensionResponse {
   private includeConsoleErrors = false;
   private includeAvailableActions = false;
   
+  // New chrome-devtools-mcp style flags
+  #includeSnapshot = false;
+  #includeTabs = false;
+  #includeExtensionStatusNew = false;
+  #includeConsole = false;
+  #includeNetwork = false;
+  #extensionIdForStatus?: string;
+  
+  // Collected data storage
+  #snapshotData?: {
+    snapshot: string;
+    snapshotId: string;
+    uidMap: Map<string, any>;
+  };
+  #tabsData?: any[];
+  #extensionStatusData?: {
+    id: string;
+    contexts: any[];
+    recentLogs: any[];
+  };
+  #consoleData?: any[];
+  #networkData?: any[];
+  
   private context?: ExtensionResponseContext;
   private suggestions: Suggestion[] = [];
+  private toolName: string = '';
+
+  constructor(toolName?: string) {
+    if (toolName) {
+      this.toolName = toolName;
+    }
+  }
 
   /**
    * Append a text line to the response
    */
   appendLine(text: string): this {
     this.textLines.push(text);
+    return this;
+  }
+
+  /**
+   * New chrome-devtools-mcp style setters
+   */
+  setIncludeSnapshot(value: boolean): this {
+    this.#includeSnapshot = value;
+    return this;
+  }
+
+  setIncludeTabs(value: boolean): this {
+    this.#includeTabs = value;
+    return this;
+  }
+
+  setIncludeExtensionStatusAuto(value: boolean, extensionId?: string): this {
+    this.#includeExtensionStatusNew = value;
+    if (extensionId) {
+      this.#extensionIdForStatus = extensionId;
+    }
+    return this;
+  }
+
+  setIncludeConsole(value: boolean): this {
+    this.#includeConsole = value;
+    return this;
+  }
+
+  setIncludeNetworkRequests(value: boolean): this {
+    this.#includeNetwork = value;
     return this;
   }
 
@@ -194,6 +257,246 @@ export class ExtensionResponse {
       this.setIncludeConsoleErrors(true);
       // TODO: Fetch actual console errors
     }
+  }
+
+  /**
+   * Core auto-collection handler (chrome-devtools-mcp pattern)
+   * Automatically collects context based on flags and returns formatted response
+   */
+  async handle(
+    toolName: string,
+    context: {
+      pageManager: any;
+      extensionHandler?: any;
+      snapshotHandler?: any;
+      chromeManager?: any;
+    }
+  ): Promise<any> {
+    this.toolName = toolName;
+
+    // Auto-collect based on flags
+    if (this.#includeSnapshot && context.snapshotHandler && context.pageManager) {
+      await this.collectSnapshot(context.pageManager, context.snapshotHandler);
+    }
+
+    if (this.#includeTabs && context.pageManager) {
+      await this.collectTabs(context.pageManager);
+    }
+
+    if (this.#includeExtensionStatusNew && this.#extensionIdForStatus && context.extensionHandler) {
+      await this.collectExtensionStatus(context.extensionHandler, this.#extensionIdForStatus);
+    }
+
+    if (this.#includeConsole && context.pageManager) {
+      await this.collectConsole(context.pageManager);
+    }
+
+    if (this.#includeNetwork && context.pageManager) {
+      await this.collectNetwork(context.pageManager);
+    }
+
+    // Format and return
+    return this.formatResponse(toolName, context);
+  }
+
+  /**
+   * Private: Collect snapshot data
+   */
+  private async collectSnapshot(pageManager: any, snapshotHandler: any): Promise<void> {
+    try {
+      const page = pageManager.getCurrentPage();
+      if (!page) return;
+
+      this.#snapshotData = await snapshotHandler.createTextSnapshot(page);
+    } catch (error) {
+      console.error('[ExtensionResponse] Snapshot collection failed:', error);
+    }
+  }
+
+  /**
+   * Private: Collect tabs data
+   */
+  private async collectTabs(pageManager: any): Promise<void> {
+    try {
+      this.#tabsData = await pageManager.listTabs();
+    } catch (error) {
+      console.error('[ExtensionResponse] Tabs collection failed:', error);
+    }
+  }
+
+  /**
+   * Private: Collect extension status
+   */
+  private async collectExtensionStatus(extensionHandler: any, extensionId: string): Promise<void> {
+    try {
+      const [contexts, logs] = await Promise.all([
+        extensionHandler.listExtensionContexts({ extensionId }).catch(() => ({ contexts: [] })),
+        extensionHandler.getExtensionLogs({ extensionId, latest: 5 }).catch(() => ({ logs: [] }))
+      ]);
+
+      this.#extensionStatusData = {
+        id: extensionId,
+        contexts: contexts.contexts || [],
+        recentLogs: logs.logs || []
+      };
+    } catch (error) {
+      console.error('[ExtensionResponse] Extension status collection failed:', error);
+    }
+  }
+
+  /**
+   * Private: Collect console logs
+   */
+  private async collectConsole(pageManager: any): Promise<void> {
+    try {
+      const page = pageManager.getCurrentPage();
+      if (!page) return;
+
+      // TODO: Implement console collection
+      this.#consoleData = [];
+    } catch (error) {
+      console.error('[ExtensionResponse] Console collection failed:', error);
+    }
+  }
+
+  /**
+   * Private: Collect network requests
+   */
+  private async collectNetwork(pageManager: any): Promise<void> {
+    try {
+      // TODO: Implement network collection
+      this.#networkData = [];
+    } catch (error) {
+      console.error('[ExtensionResponse] Network collection failed:', error);
+    }
+  }
+
+  /**
+   * Format response with auto-collected context
+   */
+  private formatResponse(toolName: string, context: any): any {
+    const response: string[] = [`# ${toolName} response`];
+
+    // Add main content lines
+    if (this.textLines.length > 0) {
+      response.push('');
+      response.push(...this.textLines);
+    }
+
+    // Auto-detect and warn about Dialog
+    // TODO: Add dialog detection when context available
+
+    // Auto-detect Service Worker inactive state
+    if (this.#extensionStatusData) {
+      const swContext = this.#extensionStatusData.contexts.find(c => c.type === 'service_worker');
+      if (swContext && !swContext.active) {
+        response.push('');
+        response.push('## ⚠️ Service Worker Inactive');
+        response.push('The extension Service Worker is dormant.');
+        response.push('**Suggestion**: Use `wait_for_extension_ready` to activate it.');
+      }
+    }
+
+    // Add Tabs
+    if (this.#includeTabs && this.#tabsData) {
+      response.push('');
+      response.push('## Open Tabs');
+      this.#tabsData.forEach((tab, i) => {
+        const selected = tab.active ? ' [selected]' : '';
+        response.push(`${i}: ${tab.url}${selected}`);
+      });
+    }
+
+    // Add Snapshot
+    if (this.#includeSnapshot && this.#snapshotData) {
+      response.push('');
+      response.push('## Page Snapshot');
+      response.push(this.#snapshotData.snapshot);
+      response.push('');
+      response.push('**Tip**: Use UIDs to interact with elements:');
+      response.push('- `click_by_uid(uid="1_5")`');
+      response.push('- `fill_by_uid(uid="1_5", value="text")`');
+      response.push('- `hover_by_uid(uid="1_5")`');
+    }
+
+    // Add Extension Status
+    if (this.#includeExtensionStatusNew && this.#extensionStatusData) {
+      response.push('');
+      response.push('## Extension Status');
+      response.push(`ID: ${this.#extensionStatusData.id}`);
+      
+      if (this.#extensionStatusData.contexts.length > 0) {
+        response.push('Contexts:');
+        this.#extensionStatusData.contexts.forEach(ctx => {
+          const status = ctx.active ? '✅ Active' : '⏸️ Inactive';
+          response.push(`  - ${ctx.type}: ${status}`);
+        });
+      }
+      
+      if (this.#extensionStatusData.recentLogs.length > 0) {
+        response.push('Recent Logs:');
+        this.#extensionStatusData.recentLogs.forEach(log => {
+          response.push(`  [${log.level}] ${log.message}`);
+        });
+      }
+    }
+
+    // Add Console
+    if (this.#includeConsole && this.#consoleData && this.#consoleData.length > 0) {
+      response.push('');
+      response.push('## Console Messages');
+      this.#consoleData.forEach(log => {
+        response.push(`[${log.type}] ${log.text}`);
+      });
+    }
+
+    // Add Network
+    if (this.#includeNetwork && this.#networkData && this.#networkData.length > 0) {
+      response.push('');
+      response.push('## Network Requests');
+      this.#networkData.forEach(req => {
+        response.push(`${req.method} ${req.url} - ${req.status}`);
+      });
+    }
+
+    // Add VIP suggestions
+    if (this.suggestions.length > 0) {
+      response.push('');
+      response.push('## 💡 Suggested Next Actions');
+      
+      const critical = this.suggestions.filter(s => s.priority === 'CRITICAL');
+      const high = this.suggestions.filter(s => s.priority === 'HIGH');
+      const medium = this.suggestions.filter(s => s.priority === 'MEDIUM');
+      
+      if (critical.length > 0) {
+        response.push('**🔴 Critical:**');
+        critical.forEach(s => {
+          response.push(`- ${s.action}: \`${s.toolName}\``);
+          response.push(`  Reason: ${s.reason}`);
+        });
+      }
+      
+      if (high.length > 0) {
+        response.push('**🟠 High Priority:**');
+        high.forEach(s => {
+          response.push(`- ${s.action}: \`${s.toolName}\``);
+        });
+      }
+      
+      if (medium.length > 0) {
+        response.push('**🟡 Consider:**');
+        medium.forEach(s => {
+          response.push(`- ${s.action}: \`${s.toolName}\``);
+        });
+      }
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: response.join('\n')
+      }]
+    };
   }
 
   /**

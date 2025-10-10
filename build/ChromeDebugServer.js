@@ -20,6 +20,7 @@ import { WaitHelper } from './utils/WaitHelper.js';
 import { DeveloperToolsHandler } from './handlers/DeveloperToolsHandler.js';
 import { McpContext } from './context/McpContext.js';
 import { ExtensionResponse } from './utils/ExtensionResponse.js';
+import { DOMSnapshotHandler } from './handlers/DOMSnapshotHandler.js';
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
 import { SuggestionEngine } from './utils/SuggestionEngine.js';
@@ -62,6 +63,9 @@ export class ChromeDebugServer {
     suggestionEngine;
     metricsCollector;
     metricsPersistence;
+    // Architecture Upgrade: Snapshot & Auto-wait
+    snapshotHandler;
+    waitForHelper;
     constructor() {
         // Initialize MCP server with basic configuration
         this.server = new Server({
@@ -80,19 +84,22 @@ export class ChromeDebugServer {
         this.interactionHandler = new InteractionHandler(this.pageManager);
         this.evaluationHandler = new EvaluationHandler(this.pageManager);
         this.extensionHandler = new ExtensionHandler(this.chromeManager, this.pageManager);
-        // Phase 2.1: Initialize Context and UID Handler
+        // Phase 2.1: Initialize Context
         this.mcpContext = new McpContext();
-        this.uidHandler = new UIDInteractionHandler(this.pageManager, this.mcpContext);
+        // VIP: Initialize Suggestion Engine & Metrics
+        this.suggestionEngine = new SuggestionEngine();
+        this.metricsCollector = new MetricsCollector();
+        this.metricsPersistence = new MetricsPersistence();
+        // Architecture Upgrade: Initialize Snapshot Handler first (needed by UID Handler)
+        this.snapshotHandler = new DOMSnapshotHandler();
+        // Phase 2.1: Initialize UID Handler with snapshotHandler
+        this.uidHandler = new UIDInteractionHandler(this.pageManager, this.mcpContext, this.snapshotHandler);
         // Phase 2.2: Initialize Advanced Interaction Handler
         this.advancedInteractionHandler = new AdvancedInteractionHandler(this.pageManager, this.mcpContext);
         // Phase 2.3: Initialize Wait Helper
         this.waitHelper = new WaitHelper(this.pageManager, this.mcpContext);
         // Phase 3: Initialize Developer Tools Handler
         this.developerToolsHandler = new DeveloperToolsHandler(this.chromeManager, this.pageManager);
-        // VIP: Initialize Suggestion Engine & Metrics
-        this.suggestionEngine = new SuggestionEngine();
-        this.metricsCollector = new MetricsCollector();
-        this.metricsPersistence = new MetricsPersistence();
         this.setupToolHandlers();
         this.server.onerror = (error) => console.error('[MCP Error]', error);
     }
@@ -807,242 +814,534 @@ export class ChromeDebugServer {
         return await this.evaluationHandler.evaluate(args);
     }
     async handleClick(args) {
-        return await this.interactionHandler.click(args);
+        return this.executeToolWithResponse('click', async (response) => {
+            try {
+                const page = this.pageManager.getCurrentPage();
+                // Execute click
+                await this.interactionHandler.click(args);
+                // TODO: WaitForHelper integration (needs protocolTimeout adjustment)
+                // Phase 1.5: Optimize WaitForHelper to avoid protocol timeouts
+                // const waitHelper = WaitForHelper.create(page);
+                // await waitHelper.waitForEventsAfterAction(...)
+                // Add small delay to allow page to settle
+                if (page) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                response.appendLine(`✅ Successfully clicked: ${args.selector}`);
+                response.setIncludeSnapshot(true); // Auto-attach new snapshot
+                response.setIncludeTabs(true); // Auto-attach tabs
+            }
+            catch (error) {
+                response.appendLine(`❌ Click failed: ${error.message}`);
+                throw error;
+            }
+        });
     }
     async handleType(args) {
-        return await this.interactionHandler.type(args);
+        return this.executeToolWithResponse('type', async (response) => {
+            await this.interactionHandler.type(args);
+            response.appendLine(`✅ Typed text into: ${args.selector}`);
+            response.setIncludeTabs(true);
+        });
     }
     async handleScreenshot(args) {
-        return await this.interactionHandler.screenshot(args);
+        return this.executeToolWithResponse('screenshot', async (response) => {
+            const result = await this.interactionHandler.screenshot(args);
+            // Screenshot returns base64 image, keep original format
+            response.appendLine('Screenshot captured successfully');
+            if (result.content && result.content[0]) {
+                response.appendLine('```');
+                response.appendLine(result.content[0].text);
+                response.appendLine('```');
+            }
+            response.setIncludeTabs(true);
+        });
     }
     async handleListTabs() {
-        const tabs = await this.pageManager.listTabs();
-        return await this.buildToolResponse('list_tabs', tabs, 'list');
+        return this.executeToolWithResponse('list_tabs', async (response) => {
+            const tabs = await this.pageManager.listTabs();
+            response.appendLine(`Found ${tabs.length} tab(s)`);
+            response.setIncludeTabs(true); // Auto-attach tabs list
+        });
     }
     async handleNewTab(args) {
-        const result = await this.pageManager.createNewTab(args.url);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        return this.executeToolWithResponse('new_tab', async (response) => {
+            const result = await this.pageManager.createNewTab(args.url);
+            response.appendLine(`✅ New tab created`);
+            response.appendLine(`Tab ID: ${result.id}`);
+            response.appendLine(`URL: ${result.url}`);
+            response.setIncludeTabs(true); // Show updated tabs list
+        });
     }
     async handleSwitchTab(args) {
-        const result = await this.pageManager.switchToTab(args.tabId);
-        return { content: [{ type: 'text', text: result.message }] };
+        return this.executeToolWithResponse('switch_tab', async (response) => {
+            const result = await this.pageManager.switchToTab(args.tabId);
+            response.appendLine(`✅ Switched to tab ${args.tabId}`);
+            response.appendLine(result.message);
+            response.setIncludeTabs(true); // Show current tabs
+        });
     }
     async handleCloseTab(args) {
-        await this.pageManager.closeTab(args.tabId);
-        return { content: [{ type: 'text', text: `closed:${args.tabId}` }] };
+        return this.executeToolWithResponse('close_tab', async (response) => {
+            await this.pageManager.closeTab(args.tabId);
+            response.appendLine(`✅ Closed tab ${args.tabId}`);
+            response.setIncludeTabs(true); // Show remaining tabs
+        });
     }
     async handleListExtensions(args) {
-        const extensions = await this.extensionHandler.listExtensions(args);
-        // Use Response Builder pattern
-        const response = new ExtensionResponse();
-        response.appendLine(`Found ${extensions.length} extension(s):`);
-        for (const ext of extensions) {
-            const status = ext.enabled ? '✅' : '⚠️';
-            response.appendLine(`${status} ${ext.name} (${ext.version}) - ${ext.id}`);
-        }
-        // Auto-attach context
-        const page = await this.pageManager.getActivePage();
-        if (page) {
-            response.setIncludePageContext(true);
-            response.setContext({ page });
-        }
-        response.setIncludeAvailableActions(true);
-        return await response.build('list_extensions', this.mcpContext);
+        return this.executeToolWithResponse('list_extensions', async (response) => {
+            const extensions = await this.extensionHandler.listExtensions(args);
+            if (extensions.length === 0) {
+                response.appendLine('No extensions found');
+            }
+            else {
+                response.appendLine(`Found ${extensions.length} extension(s):`);
+                for (const ext of extensions) {
+                    const status = ext.enabled ? '✅' : '⚠️';
+                    response.appendLine(`${status} ${ext.name} (${ext.version}) - ${ext.id}`);
+                }
+            }
+            response.setIncludeTabs(true); // Auto-attach tabs list
+            // Auto-generate suggestions
+            if (extensions.length > 0) {
+                const firstExtension = extensions[0];
+                response.addSuggestions([
+                    {
+                        priority: 'HIGH',
+                        action: 'Check extension logs for errors',
+                        toolName: 'get_extension_logs',
+                        args: { extensionId: firstExtension.id },
+                        reason: 'Identify potential issues',
+                        estimatedImpact: 'High'
+                    },
+                    {
+                        priority: 'MEDIUM',
+                        action: 'Inspect extension storage',
+                        toolName: 'inspect_extension_storage',
+                        args: { extensionId: firstExtension.id },
+                        reason: 'View stored data',
+                        estimatedImpact: 'Medium'
+                    }
+                ]);
+            }
+        });
     }
     async handleGetExtensionLogs(args) {
-        const result = await this.extensionHandler.getExtensionLogs(args);
-        return await this.buildToolResponse('get_extension_logs', result, 'list', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('get_extension_logs', async (response) => {
+            const result = await this.extensionHandler.getExtensionLogs(args);
+            if (result.logs && Array.isArray(result.logs)) {
+                response.appendLine(`Found ${result.logs.length} log(s)`);
+                result.logs.slice(0, 10).forEach((log) => {
+                    response.appendLine(`[${log.level}] ${log.source}: ${log.message}`);
+                });
+                if (result.logs.length > 10) {
+                    response.appendLine(`... and ${result.logs.length - 10} more logs`);
+                }
+            }
+            else {
+                response.appendLine('No logs found');
+            }
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+            response.setIncludeTabs(true);
+        });
     }
     async handleInjectContentScript(args) {
-        const result = await this.extensionHandler.injectContentScript(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return this.executeToolWithResponse('inject_content_script', async (response) => {
+            const result = await this.extensionHandler.injectContentScript(args);
+            response.appendLine(result.success ? '✅ Content script injected' : '❌ Injection failed');
+            if (result.message)
+                response.appendLine(result.message);
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+            response.setIncludeTabs(true);
+        });
     }
     async handleContentScriptStatus(args) {
-        const result = await this.extensionHandler.contentScriptStatus(args);
-        return await this.buildToolResponse('content_script_status', result, 'detailed', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('content_script_status', async (response) => {
+            const result = await this.extensionHandler.contentScriptStatus(args);
+            response.appendLine(`Extension: ${args.extensionId}`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+            response.setIncludeTabs(true);
+        });
     }
     async handleListExtensionContexts(args) {
-        const result = await this.extensionHandler.listExtensionContexts(args);
-        return await this.buildToolResponse('list_extension_contexts', result, 'list', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('list_extension_contexts', async (response) => {
+            const result = await this.extensionHandler.listExtensionContexts(args);
+            response.appendLine('Extension Contexts:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleSwitchExtensionContext(args) {
-        const result = await this.extensionHandler.switchExtensionContext(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return this.executeToolWithResponse('switch_extension_context', async (response) => {
+            const result = await this.extensionHandler.switchExtensionContext(args);
+            response.appendLine(result.success ? `✅ Switched to ${args.contextType}` : '❌ Switch failed');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleInspectExtensionStorage(args) {
-        const result = await this.extensionHandler.inspectExtensionStorage(args);
-        return await this.buildToolResponse('inspect_extension_storage', result, 'detailed', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('inspect_extension_storage', async (response) => {
+            const result = await this.extensionHandler.inspectExtensionStorage(args);
+            response.appendLine('Extension Storage:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // ===== Week 3 高级调试功能处理器 =====
     async handleMonitorExtensionMessages(args) {
-        const result = await this.extensionHandler.monitorExtensionMessages(args);
-        return await this.buildToolResponse('monitor_extension_messages', result, 'list', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('monitor_extension_messages', async (response) => {
+            const result = await this.extensionHandler.monitorExtensionMessages(args);
+            response.appendLine(`Monitored ${args.duration || 30000}ms`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleTrackExtensionAPICalls(args) {
-        const result = await this.extensionHandler.trackExtensionAPICalls(args);
-        return await this.buildToolResponse('track_extension_api_calls', result, 'list', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('track_extension_api_calls', async (response) => {
+            const result = await this.extensionHandler.trackExtensionAPICalls(args);
+            response.appendLine(`Tracked ${args.duration || 30000}ms`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleTestExtensionOnMultiplePages(args) {
-        const result = await this.extensionHandler.testExtensionOnMultiplePages(args);
-        return await this.buildToolResponse('test_extension_on_multiple_pages', result, 'analysis', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('test_extension_on_multiple_pages', async (response) => {
+            const result = await this.extensionHandler.testExtensionOnMultiplePages(args);
+            response.appendLine(`Tested on ${args.testUrls.length} page(s)`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // ===== Phase 1 性能分析功能处理器 =====
     async handleTrackExtensionNetwork(args) {
-        const result = await this.extensionHandler.trackExtensionNetwork(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('track_extension_network', async (response) => {
+            const result = await this.extensionHandler.trackExtensionNetwork(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // Phase 1.3: Network Monitoring Enhancement Handlers
     async handleListExtensionRequests(args) {
-        const result = this.extensionHandler.listExtensionRequests(args);
-        return await this.buildToolResponse('list_extension_requests', result, 'list', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('list_extension_requests', async (response) => {
+            const result = this.extensionHandler.listExtensionRequests(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleGetExtensionRequestDetails(args) {
-        const result = this.extensionHandler.getExtensionRequestDetails(args);
-        return await this.buildToolResponse('get_extension_request_details', result, 'detailed', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('get_extension_request_details', async (response) => {
+            const result = this.extensionHandler.getExtensionRequestDetails(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleExportExtensionNetworkHAR(args) {
-        const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('export_extension_network_har', async (response) => {
+            const result = await this.extensionHandler.exportExtensionNetworkHAR(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleAnalyzeExtensionNetwork(args) {
-        const result = this.extensionHandler.analyzeExtensionNetwork(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('analyze_extension_network', async (response) => {
+            const result = this.extensionHandler.analyzeExtensionNetwork(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleAnalyzeExtensionPerformance(args) {
-        const result = await this.extensionHandler.analyzeExtensionPerformance(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result) }]
-        };
+        return this.executeToolWithResponse('analyze_extension_performance', async (response) => {
+            const result = await this.extensionHandler.analyzeExtensionPerformance(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handlePerformanceGetInsights(args) {
-        const result = await this.extensionHandler.getPerformanceInsight(args.insightName);
-        return await this.buildToolResponse('performance_get_insights', result, 'detailed');
+        return this.executeToolWithResponse('performance_get_insights', async (response) => {
+            const result = await this.extensionHandler.getPerformanceInsight(args.insightName);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+        });
     }
     async handlePerformanceListInsights(args) {
-        const result = await this.extensionHandler.listPerformanceInsights();
-        return await this.buildToolResponse('performance_list_insights', { insights: result }, 'list');
+        return this.executeToolWithResponse('performance_list_insights', async (response) => {
+            const result = await this.extensionHandler.listPerformanceInsights();
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify({ insights: result }, null, 2));
+            response.appendLine('```');
+        });
     }
     // ===== Phase 1.2: Emulation工具处理器 =====
     async handleEmulateCPU(args) {
-        const result = await this.extensionHandler.emulateCPU(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('emulate_cpu', async (response) => {
+            const result = await this.extensionHandler.emulateCPU(args);
+            response.appendLine(result.success ? `✅ CPU throttle: ${args.rate}x` : `❌ CPU emulation failed`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+        });
     }
     async handleEmulateNetwork(args) {
-        const result = await this.extensionHandler.emulateNetwork(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('emulate_network', async (response) => {
+            const result = await this.extensionHandler.emulateNetwork(args);
+            response.appendLine(result.success ? `✅ Network: ${JSON.stringify(args.condition)}` : `❌ Network emulation failed`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+        });
     }
     async handleTestExtensionConditions(args) {
-        const result = await this.extensionHandler.testUnderConditions(args);
-        return await this.buildToolResponse('test_extension_conditions', result, 'analysis', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('test_extension_conditions', async (response) => {
+            const result = await this.extensionHandler.testUnderConditions(args);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // ===== Phase 2.1: DOM Snapshot & UID Locator Handlers =====
     async handleTakeSnapshot(args) {
-        const result = await this.uidHandler.takeSnapshot(args);
-        return await this.buildToolResponse('take_snapshot', result, 'detailed');
+        return this.executeToolWithResponse('take_snapshot', async (response) => {
+            const result = await this.uidHandler.takeSnapshot(args);
+            if (result.success && result.textRepresentation) {
+                response.appendLine(`✅ Snapshot captured (${result.elementCount || 0} elements)`);
+                response.appendLine('');
+                response.appendLine('## Page Snapshot');
+                response.appendLine(result.textRepresentation);
+                response.appendLine('');
+                response.appendLine('**Tip**: Use UIDs to interact with elements:');
+                response.appendLine('- `click_by_uid(uid="1_5")`');
+                response.appendLine('- `fill_by_uid(uid="1_5", value="text")`');
+                response.appendLine('- `hover_by_uid(uid="1_5")`');
+            }
+            else {
+                response.appendLine('❌ Snapshot failed');
+                if (result.error)
+                    response.appendLine(`Error: ${result.error}`);
+            }
+            response.setIncludeTabs(true);
+        });
     }
     async handleClickByUid(args) {
-        const result = await this.uidHandler.clickByUid(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('click_by_uid', async (response) => {
+            const result = await this.uidHandler.clickByUid(args);
+            response.appendLine(result.success ? `✅ Clicked UID: ${args.uid}` : `❌ Click failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleFillByUid(args) {
-        const result = await this.uidHandler.fillByUid(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('fill_by_uid', async (response) => {
+            const result = await this.uidHandler.fillByUid(args);
+            response.appendLine(result.success ? `✅ Filled UID: ${args.uid}` : `❌ Fill failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleHoverByUid(args) {
-        const result = await this.uidHandler.hoverByUid(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('hover_by_uid', async (response) => {
+            const result = await this.uidHandler.hoverByUid(args);
+            response.appendLine(result.success ? `✅ Hovered UID: ${args.uid}` : `❌ Hover failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     // ===== Phase 2.2: Advanced Interaction Handlers =====
     async handleHoverElement(args) {
-        const result = await this.advancedInteractionHandler.hoverElement(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('hover_element', async (response) => {
+            const result = await this.advancedInteractionHandler.hoverElement(args);
+            response.appendLine(result.success ? `✅ Hovered: ${args.selector}` : `❌ Hover failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleDragElement(args) {
-        const result = await this.advancedInteractionHandler.dragElement(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('drag_element', async (response) => {
+            const result = await this.advancedInteractionHandler.dragElement(args);
+            response.appendLine(result.success ? `✅ Dragged: ${args.selector}` : `❌ Drag failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleFillForm(args) {
-        const result = await this.advancedInteractionHandler.fillForm(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('fill_form', async (response) => {
+            const result = await this.advancedInteractionHandler.fillForm(args);
+            response.appendLine(result.success ? `✅ Filled ${result.filledCount || 0} field(s)` : `❌ Fill failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleUploadFile(args) {
-        const result = await this.advancedInteractionHandler.uploadFile(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('upload_file', async (response) => {
+            const result = await this.advancedInteractionHandler.uploadFile(args);
+            response.appendLine(result.success ? `✅ Uploaded: ${args.filePath}` : `❌ Upload failed`);
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleDialog(args) {
-        const result = await this.advancedInteractionHandler.handleDialog(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-        };
+        return this.executeToolWithResponse('handle_dialog', async (response) => {
+            const result = await this.advancedInteractionHandler.handleDialog(args);
+            response.appendLine(`Dialog ${args.action}:`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     // ===== Phase 2.3: Smart Wait Handlers =====
     async handleWaitForElement(args) {
-        const result = await this.waitHelper.waitForElement(args);
-        return {
-            content: [{ type: 'text', text: JSON.stringify({
-                        success: result.success,
-                        strategy: result.strategy,
-                        duration: result.duration,
-                        timedOut: result.timedOut,
-                        error: result.error
-                    }, null, 2) }]
-        };
+        return this.executeToolWithResponse('wait_for_element', async (response) => {
+            const result = await this.waitHelper.waitForElement(args);
+            response.appendLine(result.success ? `✅ Element found (${result.strategy})` : `❌ Wait failed`);
+            response.appendLine(`Duration: ${result.duration}ms`);
+            if (result.timedOut)
+                response.appendLine('⚠️ Timed out');
+            if (result.error)
+                response.appendLine(`Error: ${result.error}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     async handleWaitForExtensionReady(args) {
-        const result = await this.waitHelper.waitForExtensionReady(args);
-        return await this.buildToolResponse('wait_for_extension_ready', result, 'detailed', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('wait_for_extension_ready', async (response) => {
+            const result = await this.waitHelper.waitForExtensionReady(args);
+            response.appendLine(result.success ? `✅ Extension ready` : `❌ Extension not ready`);
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // ===== Phase 3: Developer Tools Handlers =====
     async handleCheckExtensionPermissions(args) {
-        const result = await this.developerToolsHandler.checkExtensionPermissions(args);
-        return await this.buildToolResponse('check_extension_permissions', result, 'analysis', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('check_extension_permissions', async (response) => {
+            const result = await this.developerToolsHandler.checkExtensionPermissions(args);
+            response.appendLine('🔐 Extension Permissions Analysis:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleAuditExtensionSecurity(args) {
-        const result = await this.developerToolsHandler.auditExtensionSecurity(args);
-        return await this.buildToolResponse('audit_extension_security', result, 'analysis', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('audit_extension_security', async (response) => {
+            const result = await this.developerToolsHandler.auditExtensionSecurity(args);
+            response.appendLine('🛡️ Extension Security Audit:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     async handleCheckExtensionUpdates(args) {
-        const result = await this.developerToolsHandler.checkExtensionUpdates(args);
-        return await this.buildToolResponse('check_extension_updates', result, 'detailed', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('check_extension_updates', async (response) => {
+            const result = await this.developerToolsHandler.checkExtensionUpdates(args);
+            response.appendLine('🔄 Extension Updates Check:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // ===== 快捷调试工具处理器 =====
     async handleQuickExtensionDebug(args) {
-        const result = await this.extensionHandler.quickExtensionDebug(args);
-        return await this.buildToolResponse('quick_extension_debug', result, 'analysis', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('quick_extension_debug', async (response) => {
+            const result = await this.extensionHandler.quickExtensionDebug(args);
+            response.appendLine('🚀 Quick Extension Debug Results:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+            response.setIncludeTabs(true);
+        });
     }
     async handleQuickPerformanceCheck(args) {
-        const result = await this.extensionHandler.quickPerformanceCheck(args);
-        return await this.buildToolResponse('quick_performance_check', result, 'analysis', { extensionId: args.extensionId });
+        return this.executeToolWithResponse('quick_performance_check', async (response) => {
+            const result = await this.extensionHandler.quickPerformanceCheck(args);
+            response.appendLine('⚡ Quick Performance Check Results:');
+            response.appendLine('```json');
+            response.appendLine(JSON.stringify(result, null, 2));
+            response.appendLine('```');
+            response.setIncludeExtensionStatusAuto(true, args.extensionId);
+        });
     }
     // ===== VIP: Response Builder & Metrics Integration =====
+    /**
+     * Architecture Upgrade: Unified tool execution with Response Builder
+     * This is the chrome-devtools-mcp pattern
+     */
+    async executeToolWithResponse(toolName, handler) {
+        const startTime = Date.now();
+        const response = new ExtensionResponse(toolName);
+        try {
+            // 1. Execute tool logic
+            await handler(response);
+            // 2. Auto-collect context and format
+            const result = await response.handle(toolName, {
+                pageManager: this.pageManager,
+                extensionHandler: this.extensionHandler,
+                snapshotHandler: this.snapshotHandler,
+                chromeManager: this.chromeManager
+            });
+            // 3. Record metrics
+            this.metricsCollector.recordToolUsage(toolName, startTime, true);
+            return result;
+        }
+        catch (error) {
+            this.metricsCollector.recordToolUsage(toolName, startTime, false);
+            response.appendLine(`Error: ${error.message}`);
+            return await response.handle(toolName, {
+                pageManager: this.pageManager,
+                extensionHandler: this.extensionHandler,
+                snapshotHandler: this.snapshotHandler,
+                chromeManager: this.chromeManager
+            });
+        }
+    }
     /**
      * Build tool response with configuration-driven context and suggestions
      */
@@ -1161,6 +1460,129 @@ export class ChromeDebugServer {
             await this.remoteTransport.startHTTPServer();
             console.error(`Chrome Debug MCP server (v2.0 - Modular) running with ${transportType} transport`);
         }
+    }
+    // ===== Phase 2: New Tools Handlers =====
+    async handleWaitFor(args) {
+        return this.executeToolWithResponse('wait_for', async (response) => {
+            const page = this.pageManager.getCurrentPage();
+            if (!page) {
+                throw new Error('No active page');
+            }
+            const timeout = args.timeout || 5000;
+            try {
+                // Use Puppeteer's built-in waitForFunction with race conditions
+                await page.waitForFunction((text) => {
+                    // Search for text in aria-label or text content
+                    const elements = Array.from(document.querySelectorAll('*'));
+                    for (const el of elements) {
+                        if (el.getAttribute('aria-label')?.includes(text) ||
+                            el.textContent?.includes(text)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }, { timeout }, args.text);
+                response.appendLine(`✅ Found text: "${args.text}"`);
+                response.setIncludeSnapshot(true);
+                response.setIncludeTabs(true);
+            }
+            catch (error) {
+                response.appendLine(`❌ Timeout waiting for: "${args.text}"`);
+                throw error;
+            }
+        });
+    }
+    async handleNavigatePageHistory(args) {
+        return this.executeToolWithResponse('navigate_page_history', async (response) => {
+            const page = this.pageManager.getCurrentPage();
+            if (!page) {
+                throw new Error('No active page');
+            }
+            const steps = args.steps || 1;
+            for (let i = 0; i < steps; i++) {
+                if (args.direction === 'back') {
+                    await page.goBack({ waitUntil: 'networkidle2' });
+                }
+                else {
+                    await page.goForward({ waitUntil: 'networkidle2' });
+                }
+            }
+            response.appendLine(`✅ Navigated ${args.direction} ${steps} step(s)`);
+            response.appendLine(`Current URL: ${page.url()}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
+    }
+    async handleResizePage(args) {
+        return this.executeToolWithResponse('resize_page', async (response) => {
+            const page = this.pageManager.getCurrentPage();
+            if (!page) {
+                throw new Error('No active page');
+            }
+            let width = args.width;
+            let height = args.height;
+            // Handle presets
+            if (args.preset) {
+                const presets = {
+                    mobile: { width: 375, height: 667 },
+                    tablet: { width: 768, height: 1024 },
+                    desktop: { width: 1920, height: 1080 },
+                    fullhd: { width: 1920, height: 1080 },
+                    '4k': { width: 3840, height: 2160 }
+                };
+                const preset = presets[args.preset];
+                if (preset) {
+                    width = preset.width;
+                    height = preset.height;
+                }
+            }
+            if (!width || !height) {
+                throw new Error('Must provide width/height or preset');
+            }
+            await page.setViewport({ width, height });
+            response.appendLine(`✅ Viewport resized to ${width}x${height}`);
+            if (args.preset)
+                response.appendLine(`Preset: ${args.preset}`);
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
+    }
+    async handleRunScript(args) {
+        return this.executeToolWithResponse('run_script', async (response) => {
+            const page = this.pageManager.getCurrentPage();
+            if (!page) {
+                throw new Error('No active page');
+            }
+            let result;
+            if (args.uid) {
+                // Get element by UID and pass to script
+                const snapshot = this.mcpContext.getCurrentSnapshot();
+                if (!snapshot || !snapshot.uidMap) {
+                    throw new Error('No snapshot available. Run take_snapshot first.');
+                }
+                const elementHandle = snapshot.uidMap.get(args.uid);
+                if (!elementHandle) {
+                    throw new Error(`Element with UID ${args.uid} not found`);
+                }
+                result = await page.evaluate((el, script) => {
+                    const element = el;
+                    return eval(script);
+                }, elementHandle, args.script);
+            }
+            else {
+                result = await page.evaluate(args.script);
+            }
+            response.appendLine('✅ Script executed');
+            if (args.returnValue !== false && result !== undefined) {
+                response.appendLine('');
+                response.appendLine('**Result:**');
+                response.appendLine('```json');
+                response.appendLine(JSON.stringify(result, null, 2));
+                response.appendLine('```');
+            }
+            response.setIncludeSnapshot(true);
+            response.setIncludeTabs(true);
+        });
     }
     /**
      * Performs cleanup when shutting down the server.
