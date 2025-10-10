@@ -20,20 +20,30 @@ import type {
   PerformanceComparison,
   PerformanceImpact
 } from '../../types/performance-types.js';
+import type { TraceResult } from '../../types/trace-types.js';
 import { 
   measureWebVitals, 
   rateWebVital, 
   calculateWebVitalsScore,
   generateWebVitalsRecommendations 
 } from '../../utils/WebVitalsIntegration.js';
+import { traceParser } from '../../utils/TraceParser.js';
 
 export class ExtensionPerformanceAnalyzer {
   private chromeManager: ChromeManager;
   private pageManager: PageManager;
+  private lastTraceResult: TraceResult | null = null;
 
   constructor(chromeManager: ChromeManager, pageManager: PageManager) {
     this.chromeManager = chromeManager;
     this.pageManager = pageManager;
+  }
+
+  /**
+   * Get the last recorded trace result (for insights extraction)
+   */
+  getLastTraceResult(): TraceResult | null {
+    return this.lastTraceResult;
   }
 
   /**
@@ -60,7 +70,16 @@ export class ExtensionPerformanceAnalyzer {
       console.log('[ExtensionPerformanceAnalyzer] 录制扩展trace...');
       const extensionTrace = await this.recordTrace(options.testUrl, duration);
       
-      // 3. 解析trace数据
+      // 3. 使用Chrome DevTools trace parser解析（如果可用）
+      console.log('[ExtensionPerformanceAnalyzer] 解析trace数据...');
+      const extensionTraceResult = await traceParser.parseRawTraceBuffer(extensionTrace);
+      
+      // Store for insights extraction
+      if ('parsedTrace' in extensionTraceResult) {
+        this.lastTraceResult = extensionTraceResult;
+      }
+      
+      // 4. 解析trace数据（基础方式作为后备）
       const baselineEvents = this.parseTraceEvents(baselineTrace);
       const extensionEvents = this.parseTraceEvents(extensionTrace);
       
@@ -169,10 +188,68 @@ export class ExtensionPerformanceAnalyzer {
    */
   private parseTraceEvents(traceBuffer: Buffer): TraceEvent[] {
     try {
-      const traceData = JSON.parse(traceBuffer.toString('utf-8'));
-      return traceData.traceEvents || [];
+      // Convert buffer-like object to actual Buffer if needed
+      let buffer: Buffer;
+      if (Buffer.isBuffer(traceBuffer)) {
+        buffer = traceBuffer;
+      } else if (traceBuffer && typeof traceBuffer === 'object' && 'length' in traceBuffer) {
+        // Handle Uint8Array or array-like objects
+        buffer = Buffer.from(traceBuffer as any);
+      } else {
+        console.error('[ExtensionPerformanceAnalyzer] Unexpected trace buffer type:', typeof traceBuffer);
+        return [];
+      }
+      
+      // Convert to string with proper encoding
+      let traceString = buffer.toString('utf8').trim();
+      
+      // Remove BOM if present
+      if (traceString.charCodeAt(0) === 0xFEFF) {
+        traceString = traceString.slice(1);
+      }
+      
+      // Validate it looks like JSON
+      if (!traceString.startsWith('{') && !traceString.startsWith('[')) {
+        console.error('[ExtensionPerformanceAnalyzer] Trace data does not appear to be JSON');
+        console.error('[ExtensionPerformanceAnalyzer] First 100 chars:', traceString.substring(0, 100));
+        return [];
+      }
+      
+      // Parse JSON
+      const traceData = JSON.parse(traceString);
+      
+      // Handle different trace formats
+      if (Array.isArray(traceData)) {
+        // Format 1: Direct array of events
+        console.log(`[ExtensionPerformanceAnalyzer] Parsed ${traceData.length} events (direct array format)`);
+        return traceData;
+      } else if (traceData.traceEvents && Array.isArray(traceData.traceEvents)) {
+        // Format 2: Object with traceEvents property
+        console.log(`[ExtensionPerformanceAnalyzer] Parsed ${traceData.traceEvents.length} events (object format)`);
+        return traceData.traceEvents;
+      } else {
+        // Format 3: Unknown - try to find any array
+        console.log('[ExtensionPerformanceAnalyzer] Unknown trace format, searching for events array...');
+        for (const key in traceData) {
+          if (Array.isArray(traceData[key]) && traceData[key].length > 0) {
+            console.log(`[ExtensionPerformanceAnalyzer] Found ${traceData[key].length} events in key: ${key}`);
+            return traceData[key];
+          }
+        }
+        console.log('[ExtensionPerformanceAnalyzer] No events array found in trace data');
+        return [];
+      }
     } catch (error) {
       console.error('[ExtensionPerformanceAnalyzer] 解析trace失败:', error);
+      // Only show preview if it's a reasonable size
+      if (traceBuffer && traceBuffer.length < 1000) {
+        try {
+          const preview = Buffer.isBuffer(traceBuffer) ? traceBuffer.toString('utf8') : String(traceBuffer);
+          console.error('[ExtensionPerformanceAnalyzer] Buffer preview:', preview.substring(0, 200));
+        } catch (e) {
+          console.error('[ExtensionPerformanceAnalyzer] Could not generate buffer preview');
+        }
+      }
       return [];
     }
   }
@@ -520,5 +597,101 @@ export class ExtensionPerformanceAnalyzer {
     if (score >= 3) return '🟡 中等 (Medium)';
     if (score >= 1) return '🟢 较低 (Low)';
     return '✅ 极小 (Minimal)';
+  }
+
+  /**
+   * Get Chrome DevTools trace summary
+   */
+  async getDevToolsTraceSummary(): Promise<string> {
+    if (!this.lastTraceResult || !('parsedTrace' in this.lastTraceResult)) {
+      return 'No trace data available. Run analyze_extension_performance first.';
+    }
+
+    try {
+      return traceParser.getTraceSummary(this.lastTraceResult);
+    } catch (error) {
+      console.error('[ExtensionPerformanceAnalyzer] Failed to get DevTools summary:', error);
+      return 'Failed to generate DevTools trace summary';
+    }
+  }
+
+  /**
+   * List available Performance Insights
+   */
+  async listPerformanceInsights(): Promise<string[]> {
+    if (!this.lastTraceResult || !('parsedTrace' in this.lastTraceResult)) {
+      return [];
+    }
+
+    try {
+      return traceParser.listInsights(this.lastTraceResult);
+    } catch (error) {
+      console.error('[ExtensionPerformanceAnalyzer] Failed to list insights:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get specific Performance Insight
+   */
+  async getPerformanceInsight(insightName: string): Promise<string> {
+    if (!this.lastTraceResult || !('parsedTrace' in this.lastTraceResult)) {
+      return 'No trace data available. Run analyze_extension_performance first.';
+    }
+
+    try {
+      const result = traceParser.getInsightOutput(this.lastTraceResult, insightName as any);
+      if ('output' in result) {
+        return result.output;
+      } else {
+        return result.error;
+      }
+    } catch (error) {
+      console.error('[ExtensionPerformanceAnalyzer] Failed to get insight:', error);
+      return `Failed to get insight: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  }
+
+  /**
+   * Get extension-specific trace events
+   */
+  async getExtensionTraceEvents(extensionId: string) {
+    if (!this.lastTraceResult || !('parsedTrace' in this.lastTraceResult)) {
+      return {
+        events: [],
+        metrics: {
+          totalDuration: 0,
+          eventCount: 0,
+          cpuTime: 0,
+          scriptTime: 0
+        }
+      };
+    }
+
+    try {
+      const events = traceParser.filterExtensionEvents(this.lastTraceResult, extensionId);
+      const metrics = traceParser.calculateExtensionMetrics(events);
+      
+      return {
+        events,
+        metrics,
+        summary: `Found ${events.length} extension-specific events:\n` +
+                `- Total Duration: ${metrics.totalDuration.toFixed(2)}ms\n` +
+                `- CPU Time: ${metrics.cpuTime.toFixed(2)}ms\n` +
+                `- Script Time: ${metrics.scriptTime.toFixed(2)}ms`
+      };
+    } catch (error) {
+      console.error('[ExtensionPerformanceAnalyzer] Failed to filter extension events:', error);
+      return {
+        events: [],
+        metrics: {
+          totalDuration: 0,
+          eventCount: 0,
+          cpuTime: 0,
+          scriptTime: 0
+        },
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 }

@@ -11,11 +11,13 @@
 import { HARExporter } from '../../utils/HARExporter.js';
 import { writeFile } from 'fs/promises';
 export class ExtensionNetworkMonitor {
+    chromeManager;
+    pageManager;
+    // 存储每个扩展的请求记录
+    requests = new Map();
+    isMonitoring = new Map();
+    monitoringStartTime = new Map();
     constructor(chromeManager, pageManager) {
-        // 存储每个扩展的请求记录
-        this.requests = new Map();
-        this.isMonitoring = new Map();
-        this.monitoringStartTime = new Map();
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
     }

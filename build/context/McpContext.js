@@ -11,6 +11,14 @@ import { ExtensionHandler } from '../handlers/ExtensionHandler.js';
  * Unified context that all tools and handlers can access
  */
 export class McpContext {
+    // Core managers and handlers
+    chromeManager;
+    pageManager;
+    interactionHandler;
+    evaluationHandler;
+    extensionHandler;
+    // Centralized state
+    state;
     constructor() {
         // Initialize managers
         this.chromeManager = new ChromeManager();

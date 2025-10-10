@@ -9,6 +9,11 @@ import { readFile } from 'fs/promises';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[ChromeManager]', ...args);
 export class ChromeManager {
+    browser = null;
+    cdpClient = null;
+    // 增强WebSocket连接管理
+    connectionRetryCount = new Map();
+    maxRetries = 3;
     /**
      * 安全的CDP操作执行，包含重试机制
      */
@@ -49,29 +54,23 @@ export class ChromeManager {
         }
         throw new Error(`Unexpected error in ${operationName}`);
     }
-    constructor() {
-        this.browser = null;
-        this.cdpClient = null;
-        // 增强WebSocket连接管理
-        this.connectionRetryCount = new Map();
-        this.maxRetries = 3;
-        this.consoleLogs = [];
-        this.structuredLogs = []; // 新增结构化日志存储
-        this.attachedSessions = new Set();
-        this.targetInfo = new Map(); // 存储目标信息
-        // 🔑 关键添加：Chrome生命周期管理
-        this.isOwnedByMCP = false; // 标记Chrome是否由MCP启动
-        this.connectionType = null;
-        this.chromeProcessPid = null;
-        // 新增：连接稳定性优化
-        this.connectionHealth = 'unhealthy';
-        this.healthCheckInterval = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 3;
-        this.lastHealthCheck = 0;
-        this.connectionConfig = null;
-        this.extensionCache = new Map(); // 扩展缓存
-    }
+    consoleLogs = [];
+    structuredLogs = []; // 新增结构化日志存储
+    attachedSessions = new Set();
+    targetInfo = new Map(); // 存储目标信息
+    // 🔑 关键添加：Chrome生命周期管理
+    isOwnedByMCP = false; // 标记Chrome是否由MCP启动
+    connectionType = null;
+    chromeProcessPid = null;
+    // 新增：连接稳定性优化
+    connectionHealth = 'unhealthy';
+    healthCheckInterval = null;
+    reconnectAttempts = 0;
+    maxReconnectAttempts = 3;
+    lastHealthCheck = 0;
+    connectionConfig = null;
+    extensionCache = new Map(); // 扩展缓存
+    constructor() { }
     getBrowser() {
         return this.browser;
     }

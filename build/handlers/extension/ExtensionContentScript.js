@@ -1,11 +1,10 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 export class ExtensionContentScript {
+    chromeManager;
+    pageManager;
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
-        this.log = (message, ...args) => {
-            console.log(`[ExtensionContentScript] ${message}`, ...args);
-        };
     }
     /**
      * 注入内容脚本到指定标签页
@@ -57,6 +56,9 @@ export class ExtensionContentScript {
             throw new McpError(ErrorCode.InternalError, `Failed to inject content script: ${error}`);
         }
     }
+    log = (message, ...args) => {
+        console.log(`[ExtensionContentScript] ${message}`, ...args);
+    };
     /**
      * 检查内容脚本的状态
      */

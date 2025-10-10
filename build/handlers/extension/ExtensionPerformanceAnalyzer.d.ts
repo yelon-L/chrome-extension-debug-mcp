@@ -11,10 +11,16 @@
 import type { ChromeManager } from '../../managers/ChromeManager.js';
 import type { PageManager } from '../../managers/PageManager.js';
 import type { PerformanceAnalysisResult, PerformanceAnalysisOptions } from '../../types/performance-types.js';
+import type { TraceResult } from '../../types/trace-types.js';
 export declare class ExtensionPerformanceAnalyzer {
     private chromeManager;
     private pageManager;
+    private lastTraceResult;
     constructor(chromeManager: ChromeManager, pageManager: PageManager);
+    /**
+     * Get the last recorded trace result (for insights extraction)
+     */
+    getLastTraceResult(): TraceResult | null;
     /**
      * 分析扩展性能影响
      */
@@ -63,5 +69,51 @@ export declare class ExtensionPerformanceAnalyzer {
      * 计算影响级别
      */
     private calculateImpactLevel;
+    /**
+     * Get Chrome DevTools trace summary
+     */
+    getDevToolsTraceSummary(): Promise<string>;
+    /**
+     * List available Performance Insights
+     */
+    listPerformanceInsights(): Promise<string[]>;
+    /**
+     * Get specific Performance Insight
+     */
+    getPerformanceInsight(insightName: string): Promise<string>;
+    /**
+     * Get extension-specific trace events
+     */
+    getExtensionTraceEvents(extensionId: string): Promise<{
+        events: any[];
+        metrics: {
+            totalDuration: number;
+            eventCount: number;
+            cpuTime: number;
+            scriptTime: number;
+        };
+        summary?: undefined;
+        error?: undefined;
+    } | {
+        events: import("../../types/trace-types.js").ExtensionTraceEvent[];
+        metrics: {
+            totalDuration: number;
+            eventCount: number;
+            cpuTime: number;
+            scriptTime: number;
+        };
+        summary: string;
+        error?: undefined;
+    } | {
+        events: any[];
+        metrics: {
+            totalDuration: number;
+            eventCount: number;
+            cpuTime: number;
+            scriptTime: number;
+        };
+        error: string;
+        summary?: undefined;
+    }>;
 }
 //# sourceMappingURL=ExtensionPerformanceAnalyzer.d.ts.map

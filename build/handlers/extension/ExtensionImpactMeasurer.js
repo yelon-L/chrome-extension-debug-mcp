@@ -7,18 +7,22 @@
 import { ExtensionPerformanceAnalyzer } from './ExtensionPerformanceAnalyzer.js';
 import { ExtensionNetworkMonitor } from './ExtensionNetworkMonitor.js';
 export class ExtensionImpactMeasurer {
+    chromeManager;
+    pageManager;
+    performanceAnalyzer;
+    networkMonitor;
+    // 默认影响级别阈值
+    DEFAULT_THRESHOLDS = {
+        cpu: { minimal: 2, low: 5, medium: 10, high: 20 },
+        memory: { minimal: 5, low: 10, medium: 25, high: 50 },
+        lcp: { minimal: 100, low: 250, medium: 500, high: 1000 },
+        cls: { minimal: 0.01, low: 0.05, medium: 0.1, high: 0.25 },
+        requests: { minimal: 5, low: 10, medium: 25, high: 50 },
+        dataSize: { minimal: 100, low: 500, medium: 2000, high: 10000 } // KB
+    };
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
-        // 默认影响级别阈值
-        this.DEFAULT_THRESHOLDS = {
-            cpu: { minimal: 2, low: 5, medium: 10, high: 20 },
-            memory: { minimal: 5, low: 10, medium: 25, high: 50 },
-            lcp: { minimal: 100, low: 250, medium: 500, high: 1000 },
-            cls: { minimal: 0.01, low: 0.05, medium: 0.1, high: 0.25 },
-            requests: { minimal: 5, low: 10, medium: 25, high: 50 },
-            dataSize: { minimal: 100, low: 500, medium: 2000, high: 10000 } // KB
-        };
         this.performanceAnalyzer = new ExtensionPerformanceAnalyzer(chromeManager, pageManager);
         this.networkMonitor = new ExtensionNetworkMonitor(chromeManager, pageManager);
     }

@@ -3,6 +3,8 @@
  * 实现扩展在多个页面的批量测试和分析
  */
 export class ExtensionTestHandler {
+    chromeManager;
+    pageManager;
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;

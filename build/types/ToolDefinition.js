@@ -17,9 +17,7 @@ export const TOOL_CATEGORIES = {
  * Tool registry for centralized tool management
  */
 export class ToolRegistry {
-    constructor() {
-        this.tools = new Map();
-    }
+    tools = new Map();
     register(tool) {
         if (this.tools.has(tool.name)) {
             throw new Error(`Tool '${tool.name}' is already registered`);

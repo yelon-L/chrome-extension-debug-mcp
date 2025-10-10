@@ -6,13 +6,12 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[PageManager]', ...args);
 export class PageManager {
-    constructor() {
-        this.browser = null;
-        this.currentPage = null;
-        this.tabIdToPage = new Map();
-        this.pageToTabId = new WeakMap();
-        this.tabIdCounter = 0;
-    }
+    browser = null;
+    currentPage = null;
+    tabIdToPage = new Map();
+    pageToTabId = new WeakMap();
+    tabIdCounter = 0;
+    constructor() { }
     setBrowser(browser) {
         this.browser = browser;
         this.ensureTabIds();

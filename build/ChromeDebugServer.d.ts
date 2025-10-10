@@ -163,6 +163,48 @@ export declare class ChromeDebugServer {
             text: string;
         }[];
     }>;
+    handlePerformanceGetInsights(args: {
+        insightName: string;
+    }): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handlePerformanceListInsights(args: any): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleEmulateCPU(args: {
+        rate: number;
+        extensionId?: string;
+    }): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleEmulateNetwork(args: {
+        condition: any;
+        extensionId?: string;
+    }): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
+    handleTestExtensionConditions(args: {
+        extensionId: string;
+        testUrl: string;
+        timeout?: number;
+    }): Promise<{
+        content: {
+            type: string;
+            text: string;
+        }[];
+    }>;
     handleQuickExtensionDebug(args: any): Promise<{
         content: {
             type: string;

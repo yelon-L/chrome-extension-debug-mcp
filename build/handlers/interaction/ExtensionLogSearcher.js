@@ -5,6 +5,7 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 const log = (...args) => console.error('[ExtensionLogSearcher]', ...args);
 export class ExtensionLogSearcher {
+    chromeManager;
     constructor(chromeManager) {
         this.chromeManager = chromeManager;
     }

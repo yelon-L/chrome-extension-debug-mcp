@@ -9,9 +9,8 @@ import fetch from 'node-fetch';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[ChromeLifecycleManager]', ...args);
 export class ChromeLifecycleManager {
-    constructor() {
-        this.connectionInfo = null;
-    }
+    connectionInfo = null;
+    static instance;
     /**
      * 检查Chrome是否已经在运行
      */

@@ -6,6 +6,7 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 const DEBUG = true;
 const log = (...args) => DEBUG && console.error('[InteractionHandler]', ...args);
 export class InteractionHandler {
+    pageManager;
     constructor(pageManager) {
         this.pageManager = pageManager;
     }

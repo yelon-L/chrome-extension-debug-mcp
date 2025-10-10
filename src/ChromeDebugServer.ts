@@ -525,6 +525,110 @@ export class ChromeDebugServer {
             required: ['extensionId', 'testUrl']
           }
         },
+        {
+          name: 'performance_get_insights',
+          description: 'Get specific Performance Insight from the last recorded trace. Available insights: DocumentLatency, LCPBreakdown, CLSCulprits, RenderBlocking, SlowCSSSelector, INPBreakdown, ThirdParties, Viewport',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              insightName: {
+                type: 'string',
+                description: 'Name of the insight to retrieve (e.g., "LCPBreakdown", "DocumentLatency")'
+              }
+            },
+            required: ['insightName']
+          }
+        },
+        {
+          name: 'performance_list_insights',
+          description: 'List all available Performance Insights from the last recorded trace',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        // Phase 1.2: Device Emulation Tools
+        {
+          name: 'emulate_cpu',
+          description: 'Emulate CPU throttling to test extension performance on slower devices (1x = no throttling, 4x = 4 times slower, up to 20x)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              rate: {
+                type: 'number',
+                description: 'CPU slowdown multiplier (1-20). 1=no throttling, 4=low-end mobile, 6=very slow device'
+              },
+              extensionId: {
+                type: 'string',
+                description: 'Optional: Extension ID for context'
+              }
+            },
+            required: ['rate']
+          }
+        },
+        {
+          name: 'emulate_network',
+          description: 'Emulate network conditions to test extension under different connection speeds. Supports presets: "Fast 3G", "Slow 3G", "4G", "Offline", "No throttling" or custom conditions',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              condition: {
+                oneOf: [
+                  {
+                    type: 'string',
+                    enum: ['Fast 3G', 'Slow 3G', '4G', 'Offline', 'No throttling'],
+                    description: 'Network condition preset'
+                  },
+                  {
+                    type: 'object',
+                    properties: {
+                      downloadThroughput: {
+                        type: 'number',
+                        description: 'Download speed in bytes/second (-1 for unlimited)'
+                      },
+                      uploadThroughput: {
+                        type: 'number',
+                        description: 'Upload speed in bytes/second (-1 for unlimited)'
+                      },
+                      latency: {
+                        type: 'number',
+                        description: 'Network latency in milliseconds'
+                      }
+                    },
+                    required: ['downloadThroughput', 'uploadThroughput', 'latency']
+                  }
+                ]
+              },
+              extensionId: {
+                type: 'string',
+                description: 'Optional: Extension ID for context'
+              }
+            },
+            required: ['condition']
+          }
+        },
+        {
+          name: 'test_extension_conditions',
+          description: 'Batch test extension functionality under multiple device/network conditions. Tests 7 predefined conditions: Optimal, Good 4G, Fast 3G, Slow 3G, Slow Device+Poor Network, Offline, CPU Intensive',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              extensionId: {
+                type: 'string',
+                description: 'Extension ID to test'
+              },
+              testUrl: {
+                type: 'string',
+                description: 'URL to test the extension on'
+              },
+              timeout: {
+                type: 'number',
+                description: 'Timeout for each test in milliseconds (default: 30000)'
+              }
+            },
+            required: ['extensionId', 'testUrl']
+          }
+        },
         // Quick Debug Tools
         ...quickDebugTools,
         // HAR Export Tools
@@ -588,6 +692,17 @@ export class ChromeDebugServer {
             return await this.handleTrackExtensionNetwork(args as any);
           case 'analyze_extension_performance':
             return await this.handleAnalyzeExtensionPerformance(args as any);
+          case 'performance_get_insights':
+            return await this.handlePerformanceGetInsights(args as any);
+          case 'performance_list_insights':
+            return await this.handlePerformanceListInsights(args as any);
+          // Phase 1.2: Emulation Tools
+          case 'emulate_cpu':
+            return await this.handleEmulateCPU(args as any);
+          case 'emulate_network':
+            return await this.handleEmulateNetwork(args as any);
+          case 'test_extension_conditions':
+            return await this.handleTestExtensionConditions(args as any);
           case 'test_extension_on_multiple_pages':
             return await this.handleTestExtensionOnMultiplePages(args as any);
           // Quick Debug Tools
@@ -777,6 +892,47 @@ export class ChromeDebugServer {
     const result = await this.extensionHandler.analyzeExtensionPerformance(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result) }]
+    };
+  }
+
+  public async handlePerformanceGetInsights(args: { insightName: string }) {
+    const result = await this.extensionHandler.getPerformanceInsight(args.insightName);
+    return {
+      content: [{ type: 'text', text: result }]
+    };
+  }
+
+  public async handlePerformanceListInsights(args: any) {
+    const result = await this.extensionHandler.listPerformanceInsights();
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ insights: result }, null, 2) }]
+    };
+  }
+
+  // ===== Phase 1.2: Emulation工具处理器 =====
+
+  public async handleEmulateCPU(args: { rate: number; extensionId?: string }) {
+    const result = await this.extensionHandler.emulateCPU(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleEmulateNetwork(args: { condition: any; extensionId?: string }) {
+    const result = await this.extensionHandler.emulateNetwork(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleTestExtensionConditions(args: {
+    extensionId: string;
+    testUrl: string;
+    timeout?: number;
+  }) {
+    const result = await this.extensionHandler.testUnderConditions(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 

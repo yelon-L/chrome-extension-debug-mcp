@@ -21,6 +21,15 @@ const log = (...args) => DEBUG && console.error('[StdioServer]', ...args);
  * Simplified Chrome Debug MCP Server for Stdio-only use
  */
 class ChromeDebugStdioServer {
+    server;
+    toolMutex;
+    // Core components
+    chromeManager;
+    pageManager;
+    interactionHandler;
+    evaluationHandler;
+    extensionHandler;
+    options;
     constructor(options) {
         this.options = options;
         // Initialize MCP server

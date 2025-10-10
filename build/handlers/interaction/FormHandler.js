@@ -5,6 +5,8 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 const log = (...args) => console.error('[FormHandler]', ...args);
 export class FormHandler {
+    chromeManager;
+    pageManager;
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;

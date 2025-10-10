@@ -16,13 +16,17 @@ export var PageState;
     PageState["UNRESPONSIVE"] = "unresponsive";
 })(PageState || (PageState = {}));
 export class PageStateMonitor {
+    chromeManager;
+    pageManager;
+    dialogManager;
+    isMonitoring = false;
+    monitorInterval;
+    lastState = PageState.NORMAL;
+    stateChangeCallbacks = [];
     constructor(chromeManager, pageManager, dialogManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
         this.dialogManager = dialogManager;
-        this.isMonitoring = false;
-        this.lastState = PageState.NORMAL;
-        this.stateChangeCallbacks = [];
     }
     /**
      * 检测当前页面状态

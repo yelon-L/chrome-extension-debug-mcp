@@ -5,6 +5,10 @@
  * for remote MCP connections.
  */
 export class RemoteTransport {
+    server;
+    config;
+    httpServer;
+    chromeDebugServer; // Reference to ChromeDebugServer for tool execution
     constructor(server, config = {}) {
         this.server = server;
         this.config = {

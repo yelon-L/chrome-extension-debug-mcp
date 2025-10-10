@@ -5,11 +5,13 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 const log = (...args) => console.error('[ElementLocator]', ...args);
 export class ElementLocator {
+    chromeManager;
+    pageManager;
+    uidCache = new Map();
+    stabilityMonitor = new Map();
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
-        this.uidCache = new Map();
-        this.stabilityMonitor = new Map();
     }
     /**
      * 生成稳定的元素选择器

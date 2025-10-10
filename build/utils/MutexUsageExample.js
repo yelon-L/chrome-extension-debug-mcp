@@ -4,6 +4,7 @@
  */
 import { Mutex } from './Mutex.js';
 export class MutexUsageExample {
+    static mutex = new Mutex();
     /**
      * 示例1: 基础Mutex使用模式
      * 这是最标准的使用方式，适用于所有需要串行化的操作
@@ -148,7 +149,6 @@ export class MutexUsageExample {
         };
     }
 }
-MutexUsageExample.mutex = new Mutex();
 /**
  * Mutex最佳实践指南
  */

@@ -5,12 +5,14 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 const log = (...args) => console.error('[DialogManager]', ...args);
 export class DialogManager {
+    chromeManager;
+    pageManager;
+    dialogHandlers = new Map();
+    isMonitoring = false;
+    detectedDialogs = [];
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
-        this.dialogHandlers = new Map();
-        this.isMonitoring = false;
-        this.detectedDialogs = [];
     }
     /**
      * 检测当前页面的所有弹窗

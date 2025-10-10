@@ -6,6 +6,7 @@
 const log = (...args) => console.error('[ExtensionDetector]', ...args);
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 export class ExtensionDetector {
+    chromeManager;
     constructor(chromeManager) {
         this.chromeManager = chromeManager;
     }

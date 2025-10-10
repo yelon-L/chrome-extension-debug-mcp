@@ -25,6 +25,7 @@ export declare class ExtensionHandler {
     private performanceAnalyzer;
     private networkMonitor;
     private impactMeasurer;
+    private emulator;
     private dialogManager;
     private logSearcher;
     private elementLocator;
@@ -121,6 +122,39 @@ export declare class ExtensionHandler {
      * 分析扩展性能影响
      */
     analyzeExtensionPerformance(args: PerformanceAnalysisOptions): Promise<PerformanceAnalysisResult>;
+    getPerformanceInsight(insightName: string): Promise<string>;
+    listPerformanceInsights(): Promise<string[]>;
+    /**
+     * 初始化emulator（懒加载）
+     */
+    private getEmulator;
+    /**
+     * CPU节流模拟
+     */
+    emulateCPU(args: {
+        rate: number;
+        extensionId?: string;
+    }): Promise<any>;
+    /**
+     * 网络条件模拟
+     */
+    emulateNetwork(args: {
+        condition: any;
+        extensionId?: string;
+    }): Promise<any>;
+    /**
+     * 批量条件测试
+     */
+    testUnderConditions(args: {
+        extensionId: string;
+        testUrl: string;
+        conditions?: any[];
+        timeout?: number;
+    }): Promise<any>;
+    /**
+     * 重置模拟条件
+     */
+    resetEmulation(): Promise<any>;
     /**
      * 追踪扩展网络请求
      */

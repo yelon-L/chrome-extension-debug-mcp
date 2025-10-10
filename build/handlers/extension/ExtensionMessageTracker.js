@@ -7,12 +7,14 @@
  * 解决Chrome API类型问题，使用字符串模板注入方式
  */
 export class ExtensionMessageTracker {
+    chromeManager;
+    pageManager;
+    messages = [];
+    apiCalls = [];
+    isMonitoring = false;
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
-        this.messages = [];
-        this.apiCalls = [];
-        this.isMonitoring = false;
     }
     /**
      * 监控扩展消息传递

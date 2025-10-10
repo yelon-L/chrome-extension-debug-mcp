@@ -73,6 +73,7 @@ export class ExtensionHandler {
   private performanceAnalyzer: ExtensionPerformanceAnalyzer; // Phase 1.1 性能分析
   private networkMonitor: ExtensionNetworkMonitor; // Phase 1.2 网络监控
   private impactMeasurer: ExtensionImpactMeasurer; // Phase 1.3 综合影响
+  private emulator: any; // Phase 1.2 设备模拟 (ExtensionEmulator)
   
   // Phase 4: 交互与快照增强
   private dialogManager: DialogManager;
@@ -99,6 +100,9 @@ export class ExtensionHandler {
     this.performanceAnalyzer = new ExtensionPerformanceAnalyzer(chromeManager, pageManager); // Phase 1.1 性能分析
     this.networkMonitor = new ExtensionNetworkMonitor(chromeManager, pageManager); // Phase 1.2 网络监控
     this.impactMeasurer = new ExtensionImpactMeasurer(chromeManager, pageManager); // Phase 1.3 综合影响
+    
+    // Lazy load emulator to avoid circular dependencies
+    this.emulator = null; // Will be initialized on first use
     
     // Phase 4: 交互与快照增强
     this.dialogManager = new DialogManager(chromeManager, pageManager);
@@ -209,6 +213,62 @@ export class ExtensionHandler {
    */
   async analyzeExtensionPerformance(args: PerformanceAnalysisOptions): Promise<PerformanceAnalysisResult> {
     return await this.performanceAnalyzer.analyzePerformance(args);
+  }
+
+  async getPerformanceInsight(insightName: string): Promise<string> {
+    return await this.performanceAnalyzer.getPerformanceInsight(insightName);
+  }
+
+  async listPerformanceInsights(): Promise<string[]> {
+    return await this.performanceAnalyzer.listPerformanceInsights();
+  }
+
+  /**
+   * 初始化emulator（懒加载）
+   */
+  private async getEmulator() {
+    if (!this.emulator) {
+      const { ExtensionEmulator } = await import('./extension/ExtensionEmulator.js');
+      this.emulator = new ExtensionEmulator(this.chromeManager, this.pageManager);
+    }
+    return this.emulator;
+  }
+
+  /**
+   * CPU节流模拟
+   */
+  async emulateCPU(args: { rate: number; extensionId?: string }) {
+    const emulator = await this.getEmulator();
+    return await emulator.emulateCPU(args);
+  }
+
+  /**
+   * 网络条件模拟
+   */
+  async emulateNetwork(args: { condition: any; extensionId?: string }) {
+    const emulator = await this.getEmulator();
+    return await emulator.emulateNetwork(args);
+  }
+
+  /**
+   * 批量条件测试
+   */
+  async testUnderConditions(args: {
+    extensionId: string;
+    testUrl: string;
+    conditions?: any[];
+    timeout?: number;
+  }) {
+    const emulator = await this.getEmulator();
+    return await emulator.batchTest(args);
+  }
+
+  /**
+   * 重置模拟条件
+   */
+  async resetEmulation() {
+    const emulator = await this.getEmulator();
+    return await emulator.resetEmulation();
   }
 
   /**

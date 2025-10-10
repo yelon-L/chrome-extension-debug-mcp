@@ -6,6 +6,9 @@
 const log = (...args) => console.error('[ExtensionStorageManager]', ...args);
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 export class ExtensionStorageManager {
+    chromeManager;
+    pageManager;
+    contextManager;
     constructor(chromeManager, pageManager, contextManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;

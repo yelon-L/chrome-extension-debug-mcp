@@ -25,6 +25,26 @@ import { QuickDebugHandler } from './QuickDebugHandler.js';
  * 扩展处理器 - 模块化架构的统一协调器
  */
 export class ExtensionHandler {
+    chromeManager;
+    pageManager;
+    logger;
+    contentScript;
+    contextManager;
+    storageManager;
+    messageTracker; // Week 3 新增
+    testHandler; // Week 3 测试辅助
+    performanceAnalyzer; // Phase 1.1 性能分析
+    networkMonitor; // Phase 1.2 网络监控
+    impactMeasurer; // Phase 1.3 综合影响
+    emulator; // Phase 1.2 设备模拟 (ExtensionEmulator)
+    // Phase 4: 交互与快照增强
+    dialogManager;
+    logSearcher;
+    elementLocator;
+    formHandler;
+    pageStateMonitor;
+    // Quick Debug Handler
+    quickDebugHandler;
     constructor(chromeManager, pageManager) {
         this.chromeManager = chromeManager;
         this.pageManager = pageManager;
@@ -39,6 +59,8 @@ export class ExtensionHandler {
         this.performanceAnalyzer = new ExtensionPerformanceAnalyzer(chromeManager, pageManager); // Phase 1.1 性能分析
         this.networkMonitor = new ExtensionNetworkMonitor(chromeManager, pageManager); // Phase 1.2 网络监控
         this.impactMeasurer = new ExtensionImpactMeasurer(chromeManager, pageManager); // Phase 1.3 综合影响
+        // Lazy load emulator to avoid circular dependencies
+        this.emulator = null; // Will be initialized on first use
         // Phase 4: 交互与快照增强
         this.dialogManager = new DialogManager(chromeManager, pageManager);
         this.logSearcher = new ExtensionLogSearcher(chromeManager);
@@ -48,6 +70,8 @@ export class ExtensionHandler {
         // 初始化Quick Debug Handler
         this.quickDebugHandler = new QuickDebugHandler(this);
     }
+    // 添加缺失的 detector 属性
+    detector;
     /**
      * 列出Chrome扩展
      */
@@ -128,6 +152,50 @@ export class ExtensionHandler {
      */
     async analyzeExtensionPerformance(args) {
         return await this.performanceAnalyzer.analyzePerformance(args);
+    }
+    async getPerformanceInsight(insightName) {
+        return await this.performanceAnalyzer.getPerformanceInsight(insightName);
+    }
+    async listPerformanceInsights() {
+        return await this.performanceAnalyzer.listPerformanceInsights();
+    }
+    /**
+     * 初始化emulator（懒加载）
+     */
+    async getEmulator() {
+        if (!this.emulator) {
+            const { ExtensionEmulator } = await import('./extension/ExtensionEmulator.js');
+            this.emulator = new ExtensionEmulator(this.chromeManager, this.pageManager);
+        }
+        return this.emulator;
+    }
+    /**
+     * CPU节流模拟
+     */
+    async emulateCPU(args) {
+        const emulator = await this.getEmulator();
+        return await emulator.emulateCPU(args);
+    }
+    /**
+     * 网络条件模拟
+     */
+    async emulateNetwork(args) {
+        const emulator = await this.getEmulator();
+        return await emulator.emulateNetwork(args);
+    }
+    /**
+     * 批量条件测试
+     */
+    async testUnderConditions(args) {
+        const emulator = await this.getEmulator();
+        return await emulator.batchTest(args);
+    }
+    /**
+     * 重置模拟条件
+     */
+    async resetEmulation() {
+        const emulator = await this.getEmulator();
+        return await emulator.resetEmulation();
     }
     /**
      * 追踪扩展网络请求
