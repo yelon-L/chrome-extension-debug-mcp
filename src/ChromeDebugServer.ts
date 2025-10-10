@@ -25,6 +25,7 @@ import { ExtensionHandler } from './handlers/ExtensionHandler.js';
 import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
 import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandler.js';
 import { WaitHelper } from './utils/WaitHelper.js';
+import { DeveloperToolsHandler } from './handlers/DeveloperToolsHandler.js';
 import { McpContext } from './context/McpContext.js';
 
 // Import types
@@ -82,6 +83,9 @@ export class ChromeDebugServer {
   
   // Phase 2.3: Smart Wait
   public waitHelper: WaitHelper;
+  
+  // Phase 3: Developer Tools
+  public developerToolsHandler: DeveloperToolsHandler;
 
   constructor() {
     // Initialize MCP server with basic configuration
@@ -116,6 +120,9 @@ export class ChromeDebugServer {
     
     // Phase 2.3: Initialize Wait Helper
     this.waitHelper = new WaitHelper(this.pageManager, this.mcpContext);
+    
+    // Phase 3: Initialize Developer Tools Handler
+    this.developerToolsHandler = new DeveloperToolsHandler(this.chromeManager, this.pageManager);
 
     this.setupToolHandlers();
     this.server.onerror = (error) => console.error('[MCP Error]', error);
@@ -763,6 +770,13 @@ export class ChromeDebugServer {
             return await this.handleWaitForElement(args as any);
           case 'wait_for_extension_ready':
             return await this.handleWaitForExtensionReady(args as any);
+          // Phase 3: Developer Tools
+          case 'check_extension_permissions':
+            return await this.handleCheckExtensionPermissions(args as any);
+          case 'audit_extension_security':
+            return await this.handleAuditExtensionSecurity(args as any);
+          case 'check_extension_updates':
+            return await this.handleCheckExtensionUpdates(args as any);
           // Quick Debug Tools
           case 'quick_extension_debug':
             return await this.handleQuickExtensionDebug(args as any);
@@ -1104,6 +1118,29 @@ export class ChromeDebugServer {
 
   public async handleWaitForExtensionReady(args: any) {
     const result = await this.waitHelper.waitForExtensionReady(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  // ===== Phase 3: Developer Tools Handlers =====
+
+  public async handleCheckExtensionPermissions(args: any) {
+    const result = await this.developerToolsHandler.checkExtensionPermissions(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleAuditExtensionSecurity(args: any) {
+    const result = await this.developerToolsHandler.auditExtensionSecurity(args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  public async handleCheckExtensionUpdates(args: any) {
+    const result = await this.developerToolsHandler.checkExtensionUpdates(args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };

@@ -17,6 +17,7 @@ import { ExtensionHandler } from './handlers/ExtensionHandler.js';
 import { UIDInteractionHandler } from './handlers/UIDInteractionHandler.js';
 import { AdvancedInteractionHandler } from './handlers/AdvancedInteractionHandler.js';
 import { WaitHelper } from './utils/WaitHelper.js';
+import { DeveloperToolsHandler } from './handlers/DeveloperToolsHandler.js';
 import { McpContext } from './context/McpContext.js';
 // Import utilities
 import { Mutex } from './utils/Mutex.js';
@@ -49,6 +50,8 @@ export class ChromeDebugServer {
     advancedInteractionHandler;
     // Phase 2.3: Smart Wait
     waitHelper;
+    // Phase 3: Developer Tools
+    developerToolsHandler;
     constructor() {
         // Initialize MCP server with basic configuration
         this.server = new Server({
@@ -74,6 +77,8 @@ export class ChromeDebugServer {
         this.advancedInteractionHandler = new AdvancedInteractionHandler(this.pageManager, this.mcpContext);
         // Phase 2.3: Initialize Wait Helper
         this.waitHelper = new WaitHelper(this.pageManager, this.mcpContext);
+        // Phase 3: Initialize Developer Tools Handler
+        this.developerToolsHandler = new DeveloperToolsHandler(this.chromeManager, this.pageManager);
         this.setupToolHandlers();
         this.server.onerror = (error) => console.error('[MCP Error]', error);
     }
@@ -715,6 +720,13 @@ export class ChromeDebugServer {
                         return await this.handleWaitForElement(args);
                     case 'wait_for_extension_ready':
                         return await this.handleWaitForExtensionReady(args);
+                    // Phase 3: Developer Tools
+                    case 'check_extension_permissions':
+                        return await this.handleCheckExtensionPermissions(args);
+                    case 'audit_extension_security':
+                        return await this.handleAuditExtensionSecurity(args);
+                    case 'check_extension_updates':
+                        return await this.handleCheckExtensionUpdates(args);
                     // Quick Debug Tools
                     case 'quick_extension_debug':
                         return await this.handleQuickExtensionDebug(args);
@@ -997,6 +1009,25 @@ export class ChromeDebugServer {
     }
     async handleWaitForExtensionReady(args) {
         const result = await this.waitHelper.waitForExtensionReady(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    // ===== Phase 3: Developer Tools Handlers =====
+    async handleCheckExtensionPermissions(args) {
+        const result = await this.developerToolsHandler.checkExtensionPermissions(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleAuditExtensionSecurity(args) {
+        const result = await this.developerToolsHandler.auditExtensionSecurity(args);
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+        };
+    }
+    async handleCheckExtensionUpdates(args) {
+        const result = await this.developerToolsHandler.checkExtensionUpdates(args);
         return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
         };
